@@ -2,8 +2,9 @@
 #This file contains the methods and attributes of document objects.
 
 from cmu_112_graphics import *
+from gui_functions import *
 
-class Document():
+class Document(): #careful about timestamps, they may need to be strings to preserve zeroes.
     def __init__(self, app, path, title, make_timestamp, tags=[], pages=[]):
         """Takes in an app, path, title, tags, pages, and timestamp and initializes a document
         object."""
@@ -25,14 +26,14 @@ class Document():
 
     def editTag(self, newTags):
         """Replaces the tags with a new list of tags"""
-        self.tags = self.newTags
+        self.tags = newTags
 
     def getTags(self) -> list:
         """returns a list of tags."""
         return self.tags
 
     def rename(self, newName):
-        self.title = self.newName
+        self.title = newName
         #write to file
 
     def deletePage(selft):
@@ -101,33 +102,7 @@ class Document():
                 page.append(wordGroup)
         thumbnailText = '\n'.join(page)
         return thumbnailText
-
-    def roundRectangle(self, canvas, x1, y1, x2, y2, radius=25, **kwargs):
-        """CITATION: from user SneakyTurtle on StackOverflow
-        https://stackoverflow.com/questions/44099594/how-to-make-a-tkinter-canvas-rectangle-with-rounded-corners
-        Draws a rounded rectangle with corners at (x1,y1) and x2,y2)."""
-        points = [x1+radius, y1,
-                x1+radius, y1,
-                x2-radius, y1,
-                x2-radius, y1,
-                x2, y1,
-                x2, y1+radius,
-                x2, y1+radius,
-                x2, y2-radius,
-                x2, y2-radius,
-                x2, y2,
-                x2-radius, y2,
-                x2-radius, y2,
-                x1+radius, y2,
-                x1+radius, y2,
-                x1, y2,
-                x1, y2-radius,
-                x1, y2-radius,
-                x1, y1+radius,
-                x1, y1+radius,
-                x1, y1]
-
-        canvas.create_polygon(points, **kwargs, smooth=True)
+    
     
     def drawThumbnail(self, canvas, cx:int, cy:int):
         """Draws a thumbnail of the document around the given center coordinates."""
@@ -152,9 +127,9 @@ class Document():
             tagLength = len(self.tags[i])* 6 + tagPaddingX*2
             tagHeight = 14 + tagPaddingY
             row = i
-            self.roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + tagMargin),
+            roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + tagMargin),
                 leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + tagMargin), radius=6, fill="gold")
             #TODO: have this use the color and name of the tag object
-            canvas.create_text(leftAnchor + tagPaddingX, cy + row*(tagHeight//2 + tagMargin + tagPaddingY*2),
+            canvas.create_text(leftAnchor + tagPaddingX, cy + row*(tagHeight + tagMargin),
                 anchor="nw", font="Arial 8 normal", text=f"{self.tags[i]}")
 

@@ -1,9 +1,14 @@
 #The main file, __init__.py
 #This file runs the whole game by calling WritingApp, a modal app.
 
+#CITATION: cmu_112_graphics package from https://www.diderot.one/course/34/chapters/2846/
 from cmu_112_graphics import *
+import tkinter.simpledialog as sd
+#CITATION: pickle from https://docs.python.org/3/library/pickle.html
 import pickle
 from Document import *
+from gui_functions import *
+from Searchbar import *
 
 class WritingApp(ModalApp):
     def appStarted(self):
@@ -125,15 +130,66 @@ class LibraryMode(Mode):
         self.cellWidth = self.libraryWidth // self.cols
         self.cellHeight = self.libraryHeight // self.rows
         self.marginX = (self.width - self.libraryWidth)//2
+        self.offsetX = 14
+        self.offsetY = 8
+        self.titleSize = 11
+        self.subtitleSize = 10
+        self.highlightWidth = 14
         self.documents = []
-        doc1 = Document(self, "filepath", "15-112: Fundamentals of Computer Science", 1141, ["tag1", "tag2"], ["abcdefg", "qrstuv"])
+        doc1 = Document(self, "filepath1", "15-112: Fundamentals of Computer Science", "1141", ["short", "very long tag", "medium"], ["abcdefg", "qrstuv"])
+        doc2 = Document(self, "filepath2", "How People Work", "0127", ["notes"], ["abcdefg", "qrstuv"])
+        doc3 = Document(self, "filepath3", "Another Book", "0242", ["notes", "misc"], ["page1contents", "page2contents"])
         self.documents.append(doc1)
+        self.documents.append(doc2)
+        self.documents.append(doc3)
+        if len(self.documents) > 1:
+            self.selectedDocument = self.documents[0]
+        else:
+            self.selectedDocument = None
+        searchBoxWidth = 150
+        self.topSearch = SearchBar(self, self.offsetX + searchBoxWidth//2, self.menuHeight - self.offsetY*2, searchBoxWidth)
 
-    #selectDoc
-        #If selected document clicked again, open editor for that document.
-        #if another doc is clicked, deselect current and select newly clicked.
+    def mousePressed(self, event):
+        """Selects documents in the grid based on mouse press coords. Launches editor
+        on if selected document is clicked again."""
+        row = (event.y - self.menuHeight)//self.cellHeight
+        col = (event.x - (self.width//2 - self.displayWidth))//self.cellWidth
+        index = col + row*self.cols
+        if 0 <= index < len(self.documents):
+            if self.documents[index] != self.selectedDocument:
+                self.selectedDocument = self.documents[index]
+                print("click1")
+            elif self.documents[index] == self.selectedDocument:
+                #TODO: open that selected document in editor
+                print("click2")
 
-        #will need a mousepressed
+        #sets searchbar istyping to false if clicked not on the box
+        if self.topSearch.isTyping == True:
+            if not ((self.topSearch.cx - self.topSearch.boxWidth//2) <= event.x <= (self.topSearch.cx + self.topSearch.boxWidth//2) and
+                (self.topSearch.cy - self.topSearch.boxHeight//2) <= event.y <= (self.topSearch.cy + self.topSearch.boxHeight//2)):
+                self.topSearch.isTyping = False
+    
+    def keyPressed(self, event):
+        if self.topSearch.isTyping == True:
+            if event.key in "abcdefghijklmnopqrstuvwxyz1234567890":
+                self.topSearch.searchInput += event.key
+            if event.key == "Backspace":
+                self.topSearch.searchInput = self.topSearch.searchInput[:-1]
+            if event.key == "Enter":
+                pass
+                #callsearch method on the input
+
+
+    def drawHighlight(self, canvas):
+        selectedIndex = self.documents.index(self.selectedDocument)
+        row = selectedIndex // self.cols
+        col = selectedIndex % self.rows
+        cx = col * self.cellWidth + self.cellWidth//2 + (self.width//2-self.displayWidth)
+        cy = row * self.cellHeight + self.cellHeight//2 + self.menuHeight
+        highlightX = (self.libraryWidth//4 - self.highlightWidth) // 2
+        highlightY = (self.libraryHeight//4 - self.highlightWidth) // 2
+        canvas.create_rectangle(cx - highlightX, cy - highlightY, cx + highlightX,
+            cy + highlightY, fill="cornflower blue", width=0)
 
     #newDoc
         #opens panel where title and timestamp can be entered
@@ -155,27 +211,29 @@ class LibraryMode(Mode):
     def drawTopMenu(self, canvas):
         """Draws the top menu which contains the search bar, sort and filter options,
         and create new document button."""
-        offsetX = 14
-        offsetY = 8
         dividerX = 180
-        titleSize = 11
-        subtitleSize = 10
 
         canvas.create_rectangle(0, 0, self.width, self.menuHeight, fill= "white", width=0)
-        canvas.create_text(offsetX, offsetY, anchor="nw", font=f"Arial {titleSize} normal", text="Search:")
-        #search input
-        #divider
-        canvas.create_line(dividerX, offsetY, dividerX, self.menuHeight - offsetY, width=2, fill="light grey")
+        canvas.create_text(self.offsetX, self.offsetY, anchor="nw", font=f"Arial {self.titleSize} normal", text="Search:")
+        self.topSearch.drawBox(canvas)
+        canvas.create_line(dividerX, self.offsetY, dividerX, self.menuHeight - self.offsetY, width=2, fill="light grey")
         #sort text
-        canvas.create_text(dividerX + offsetX, offsetY, anchor = "nw", font=f"Arial {titleSize} normal", text="Sort by:")
+        canvas.create_text(dividerX + self.offsetX, self.offsetY, anchor = "nw", font=f"Arial {self.titleSize} normal", text="Sort by:")
         #sort dropdown
         #filter text
-        canvas.create_text(dividerX + offsetX, self.menuHeight - offsetY, anchor = "sw", font=f"Arial {titleSize} normal", text="Filter tag:")
+        canvas.create_text(dividerX + self.offsetX, self.menuHeight - self.offsetY, anchor = "sw", font=f"Arial {self.titleSize} normal", text="Filter tag:")
         #filter display (max 4)
         #new doc button
 
     def drawBotMenu(self, canvas):
+        """Draws the lower menu that contains the options for the selected file"""
+        buttonWidth = 80
         canvas.create_rectangle(0, self.height - self.menuBotHeight, self.width, self.height, fill= "white", width=0)
+        if self.selectedDocument != None:
+            drawButton(canvas, self.width//4, self.height - self.menuBotHeight//2, onClick = self.renamePopup, text= "Rename")
+            drawButton(canvas, self.width//4 + self.offsetX + buttonWidth, self.height - self.menuBotHeight//2, onClick = self.editTagPopup, text= "Edit Tags")
+            #draw button for
+
 
 
     ########################################
@@ -184,8 +242,8 @@ class LibraryMode(Mode):
 
     def drawGrid(self, canvas):
         for i in range(len(self.documents)):
-            row = i % self.rows
-            col = i // self.rows
+            row = i // self.cols
+            col = i % self.rows
             cx = col * self.cellWidth + self.cellWidth//2 + (self.width//2-self.displayWidth)
             cy = row * self.cellHeight + self.cellHeight//2 + self.menuHeight
             #stuff for testing:
@@ -208,17 +266,21 @@ class LibraryMode(Mode):
     #Editing functions
     #####################################
 
-    #renameDoc
-        #enables panel which is drawn over the rest of the screen
-        #takes in text input
-        #if renameDone onclick fired while panel is open, writes new title to file
+    def renamePopup(self):
+        answer = simpledialog.askstring("Rename", "What would you like to rename the document?")
+        if answer != None:
+            self.selectedDocument.rename(answer)
+            #TODO: write new title to file
     
-    #renameDone (onclick method for when done button is clicked)
 
-    #editDocTag
-        #enables panel
-        #takes text input
-        #if docTagDone onclick fired, writes new tags to file.
+    def editTagPopup(self):
+        answer = simpledialog.askstring("Edit tags", "Separate tags by commas")
+        if answer != None:
+            newTags = []
+            for elem in answer.split(","):
+                newTags.append(elem) #TODO: replace this so it works with tag objects
+                #newTag.append(Tag(elem))
+            self.selectedDocument.editTag(newTags)
 
     #docTagDone (onclick method for when done button is clicked)
 
@@ -255,15 +317,18 @@ class LibraryMode(Mode):
 
     def redrawAll(self, canvas):
         canvas.create_rectangle(0, 0, self.width, self.height, fill= "light grey", width=0)
-        canvas.create_rectangle(self.width//2 - self.displayWidth, self.menuHeight, self.width//2 + self.displayWidth,
-            self.height - self.menuBotHeight, outline="grey")
+        #this is for testing purposes:
+        #canvas.create_rectangle(self.width//2 - self.displayWidth, self.menuHeight, self.width//2 + self.displayWidth,
+            #self.height - self.menuBotHeight, outline="grey")
+        if self.selectedDocument != None:
+            self.drawHighlight(canvas)
         self.drawGrid(canvas)
         self.drawTopMenu(canvas)
         self.drawBotMenu(canvas)
         
 
 def main():
-    WritingApp(width=700, height=800)
+    WritingApp(width=700, height=790)
 
 
 if __name__ == "__main__":
