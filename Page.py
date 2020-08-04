@@ -1,10 +1,15 @@
 class Page():
-    def __init__(self, words, tags):
+    def __init__(self, app, words = "", tags = []):
         """Initializes page class with contents and tags."""
+        self.app = app
         self.words = words
         self.internalTags = tags
+        self.PageWidth = 30
 
     def getWordCount(self):
+        """Returns the number of words on the page by counting the number
+        of spaces and adding one."""
+        return self.words.count(' ') + 1
 
     def getCharCount(self):
         """Returns the number of characters (including spaces) on the page"""
@@ -23,9 +28,6 @@ class Page():
         """Can find strings in the words on the page"""
         return val in self.words
 
-    def lines(self, PageWidth):
-        """Returns list of words that appear on each line based off of a
-        specified page width."""
+    def lines(self):
+        """Returns list of words that appear on each line based off of the page width."""
         pass
-
-    def 
