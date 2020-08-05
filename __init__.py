@@ -4,6 +4,7 @@
 #CITATION: cmu_112_graphics package from https://www.diderot.one/course/34/chapters/2846/
 from cmu_112_graphics import *
 import tkinter.simpledialog as sd
+import tkinter.messagebox as mb
 #CITATION: pickle from https://docs.python.org/3/library/pickle.html
 import pickle
 #CITATION: tkinter from https://docs.python.org/3/library/tkinter.html
@@ -23,7 +24,7 @@ class WritingApp(ModalApp):
         self.addMode(EditorMode(name="editor"))
         self.setActiveMode("library")
     
-    
+    #TODO: FINISH THIS
     def getDocs(self): #reads files in the library file directory and converts to Document.
         if not os.path.exists('documents'):
             os.makedirs('documents')
@@ -61,10 +62,14 @@ class EditorMode(Mode):
         self.offsetY = 8
         self.titleSize = 11
         self.subtitleSize = 10
-        self.pageWidth = 600
+        self.pageWidth = 560
+        self.pagePosX = self.width* (5/11)
+        self.pageHeight = 790 - self.menuBotHeight - self.offsetY
 
     def closeEditor(self):
         """Onclick method for when the close button is clicked."""
+        self.currDoc.updateTags() #TODO: this doesnt seem to be update the tags. if pages with tags are deleted
+        #and that tag is not a doctag, then it should remove it from the document.
         self.setActiveMode("library")
 
     def modeActivated(self):
@@ -109,20 +114,23 @@ class EditorMode(Mode):
     #mouse cursor
 
     ###############################################
-    #Page management
+    #Popups
     ###############################################
 
-    #addPage(self)
-
-    #delPage(self)
-
-    #flipForward (go to next page)
-
-    #flipBackward (go back a page)
-
-    #jumpTo(self, page)
-
-    #getCurrentPages
+    def jumpToPopup(self):
+        descrip = """Which page would you like to go to?"""
+        answer = simpledialog.askstring("Jump to", descrip)
+        if answer != None and answer.isdigit():
+            if self.currDoc.jumpToPage(answer) == False:
+                print("Page not in range")
+    
+    def deletePopup(self):
+        if self.currDoc.currPage != None:
+            descrip = """Are you sure you want to delete this page?\n
+            Deleted pages cannot be recovered."""
+            answer = messagebox.askyesno("WARNING", descrip)
+            if answer != False:
+                self.currDoc.deletePage()
 
     ###############################################
     #Tag Creation
@@ -170,8 +178,18 @@ class EditorMode(Mode):
         drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.closeEditor, text="Close", w=buttonWidth)
 
     def drawBotMenu(self, canvas):
+        buttonWidth = 80
+        arrowWidth = 40
+    
         canvas.create_rectangle(0, self.height - self.menuBotHeight, self.width, self.height, fill= "white", width=0)
         drawButton(canvas, self.width*(3/4), self.height - self.menuBotHeight//2, onClick = self.currDoc.addPage, text="+Page")
+        drawButton(canvas, self.width*(3/4) + buttonWidth + self.offsetX, self.height - self.menuBotHeight//2, onClick = self.deletePopup, text="-Page")
+        #draws page count / total
+        canvas.create_text(self.pagePosX, self.height - self.menuBotHeight//2, text=f"Page {self.currDoc.currPageNum} / {len(self.currDoc.pages)}")
+        drawButton(canvas, self.offsetX + buttonWidth//2, self.height - self.menuBotHeight//2, onClick=self.jumpToPopup, text="Jump to")
+        #draws page flip buttons
+        drawButton(canvas, self.offsetX*2 + buttonWidth + arrowWidth, self.height - self.menuBotHeight//2, onClick=self.currDoc.flipBackward, text="<-", w=arrowWidth)
+        drawButton(canvas, self.offsetX*3 + buttonWidth + arrowWidth*2, self.height - self.menuBotHeight//2, onClick=self.currDoc.flipForward, text="->", w=arrowWidth)
 
     def drawSidebar(self, canvas):
         offsetY = 60
@@ -179,6 +197,8 @@ class EditorMode(Mode):
 
     def redrawAll(self, canvas):
         canvas.create_rectangle(0, 0, self.width, self.height, fill= "light grey", width=0)
+        self.currDoc.drawDocPage(canvas, self.pagePosX - self.pageWidth//2, self.menuHeight + self.offsetY, self.pagePosX + self.pageWidth//2,
+            self.pageHeight)
         self.drawTopMenu(canvas)
         self.drawBotMenu(canvas)
         self.drawSidebar(canvas)

@@ -17,6 +17,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         self.doctags = tags
         self.tags = self.doctags
         self.currPage = None
+        self.currPageNum = None
         self.updatePages()
         self.updateTags()
         #This loads all the tags both internal and external to the document.
@@ -87,6 +88,10 @@ class Document(): #careful about timestamps, they may need to be strings to pres
     def updatePages(self):
         if len(self.pages) > 0:
             self.currPage = 0
+            self.currPageNum = self.currPage + 1
+        elif len(self.pages) == 0:
+            self.currPage = None
+            self.currPageNum = None
 
     def getTags(self) -> list:
         """returns a list of tags."""
@@ -98,43 +103,52 @@ class Document(): #careful about timestamps, they may need to be strings to pres
 
     def deletePage(self):
         """Takes in a pageIndex and removes it from the list of pages."""
-        if len(self.pages) > self.currPage: # this should always be true
+        if len(self.pages) > self.currPageNum and len(self.pages) > 0 and self.currPageNum > 1 and self.currPage != None:
             self.pages.pop(self.currPage)
-            return True
-        else:
-            return False
+        elif self.currPage == 0 and len(self.pages) > 0:
+            self.pages.pop(self.currPage)
+            if len(self.pages) < 1:
+                self.currPage = None
+                self.currPageNum = None
     
     def addPage(self):
         """Adds a new blank page at the index after the current page."""
         if len(self.pages) > 0:
-            newPageIndex = self.currPage + 1
+            newPageIndex = self.currPage + 1 #TODO: UPDATE THIS SO CREATING NEW PAGES GOES TO THE NEW PAGE
         else:
             newPageIndex = 0
         self.pages.insert(newPageIndex, Page(self))
         #switch pages to the newly created page
+        #the page number should always be one greater than the list index
         self.currPage = newPageIndex
-        print(self.currPage)
-        print(str(self.pages))
+        self.currPageNum = self.currPage + 1
 
     def flipForward(self):
         """flips to the next page if it is not the last page. returns true if successful"""
-        if self.currPage < len(self.pages)-1:
+        if self.currPage != None and self.currPage < len(self.pages)-1:
             #flip page forward
             self.currPage += 1
+            self.currPageNum += 1
             return True
         else: return False
 
     def flipBackward(self):
         """flips back a page if it is not the first page. returns true if successful"""
-        if self.currPage != 0:
+        if self.currPage != None and self.currPage > 0:
             #flip page backward
             self.currPage -= 1
+            self.currPageNum -= 1
             return True
         else: return False
 
-    def jumpToPage(self, pageIndex: int):
+    def jumpToPage(self, pageNum: str):
         """Jumps to the page with a specified index."""
-        self.currPage = pageIndex
+        pageIndex = int(pageNum) -1
+        if 0 <= pageIndex < len(self.pages):
+            self.currPage = pageIndex
+            self.currPageNum = self.currPage + 1
+            return True
+        return False
 
     def saveFile(self): #TODO: Update this to write the timestamp and document contents properly
         """Writes changes to file I/O. Code taken from https://www.diderot.one/course/34/chapters/2604/"""
@@ -193,32 +207,34 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             row = i
             roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + self.tagMargin),
                 leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + self.tagMargin), radius=6, fill=f"{self.tags[i].color}")
-            #TODO: have this use the color and name of the tag object
             canvas.create_text(leftAnchor + self.tagPaddingX, cy + row*(tagHeight + self.tagMargin),
                 anchor="nw", font=("Courier New", 8, "normal"), text=f"{self.tags[i].name}")
 
-    def drawDocPage(self, canvas):
-        pass
+    def drawDocPage(self, canvas, x0:int, y0:int, x1:int, y1:int):
+        """Draws the current page given the coords for the top and left corner."""
         #call page drawing function for the current page
-        #if len(self.pages) > 0:
+        if len(self.pages) > 0:
+            canvas.create_rectangle(x0, y0, x1, y1, fill="white", width=0)
             #wordsToDraw = self.pages[self.currPage].words
             #create canvas object with wordsToDraw
 
     def drawCurrTags(self, canvas, cx:int, cy:int):
+        """Draws a column of the tags on the current page given location coords."""
         leftAnchor = cx - self.halfWidth + 12
         labelOffsetY = 30
 
         canvas.create_text(cx, cy - labelOffsetY, text="Page Tags:")
 
-        if self.currPage != None:
-            currTags = self.pages[self.currPage].tags
+        if self.currPage != None and len(self.pages) > 0:
+            if len(self.pages[self.currPage].tags) > 0: # if the length of the page tags is greater than 0
+                currTags = self.pages[self.currPage].tags
 
-            for i in range(len(currTags)):
-                tagLength = len(currTags[i].name)* 7 + self.tagPaddingX*2
-                tagHeight = 14 + self.tagPaddingY
-                row = i
-                roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + self.tagMargin),
-                    leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + self.tagMargin), radius=6, fill=f"{currTags[i].color}")
-                canvas.create_text(leftAnchor, cy + row*(tagHeight + self.tagMargin),
-                    anchor="nw", font=("Courier New", 8, "normal"), text=f"{currTags[i].name}")
+                for i in range(len(currTags)):
+                    tagLength = len(currTags[i].name)* 7 + self.tagPaddingX*2
+                    tagHeight = 14 + self.tagPaddingY
+                    row = i
+                    roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + self.tagMargin),
+                        leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + self.tagMargin), radius=6, fill=f"{currTags[i].color}")
+                    canvas.create_text(leftAnchor, cy + row*(tagHeight + self.tagMargin),
+                        anchor="nw", font=("Courier New", 8, "normal"), text=f"{currTags[i].name}")
 
