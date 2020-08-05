@@ -18,7 +18,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         self.currPage = 0
         self.docWidth = self.app.libraryWidth // 4 - 20
         self.docHeight = self.app.libraryHeight // 4 - 20
-        self.thumbnailWidth = 18 #this is the number of characters that can fit on one line
+        self.thumbnailWidth = 16 #this is the number of characters that can fit on one line
 
     def addTag(self, newTag):
         """Adds a tag to the list of tags."""
@@ -118,18 +118,18 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         canvas.create_rectangle(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight, fill="white",
             width=0)
         #draw title text
-        canvas.create_text(cx, cy - (halfHeight*(6/7)), anchor= "n", font= "Arial 10 normal", 
+        canvas.create_text(cx, cy - (halfHeight*(6/7)), anchor= "n", font= ("Courier New", 9, "normal"), 
             text= f"{self.thumbnailWraparound()}", fill="grey20")
 
         #draw tags
         #TODO: Clean up the variables in this code!
         for i in range(len(self.tags)):
-            tagLength = len(self.tags[i])* 6 + tagPaddingX*2
+            tagLength = len(self.tags[i])* 7 + tagPaddingX*2
             tagHeight = 14 + tagPaddingY
             row = i
             roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + tagMargin),
                 leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + tagMargin), radius=6, fill="gold")
             #TODO: have this use the color and name of the tag object
             canvas.create_text(leftAnchor + tagPaddingX, cy + row*(tagHeight + tagMargin),
-                anchor="nw", font="Arial 8 normal", text=f"{self.tags[i]}")
+                anchor="nw", font=("Courier New", 8, "normal"), text=f"{self.tags[i]}")
 

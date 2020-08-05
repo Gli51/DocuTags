@@ -45,9 +45,23 @@ class WritingApp(ModalApp):
 
 class EditorMode(Mode):
     def appStarted(self):
-        pass
+        self.libmode = self.getMode("library")
+        self.currDoc = self.libmode.selectedDocument
+        print(self.currDoc)
+        self.menuHeight = self.height//14
+        self.menuBotHeight = self.height//14
+        self.offsetX = 14
+        self.offsetY = 8
+        self.titleSize = 11
+        self.subtitleSize = 10
 
-    #closeEditor
+    def closeEditor(self):
+        """Onclick method for when the close button is clicked."""
+        self.setActiveMode("library")
+
+    def modeActivated(self):
+        self.appStarted()
+
 
     ###############################################
     #Content management
@@ -58,10 +72,28 @@ class EditorMode(Mode):
     #saveFile
         #(writeFile)
     
-    #keyPressed(shift, numbers, symbols, letters, enter/return, backspace, tab)
-        #need to check for line overflow
+    def keyPressed(self, event):
+            #if not typing in search bar:
+            alphabet= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            numbers = "0123456789"
+            symbols = "!@#$%^&*()'.,<>/?\|]}[{+_-=;:"
+            if (event.key in alphabet or event.key in numbers or event.key in symbols
+                or event.key == '"'):
+                pass
+                #set page contents equal to page contents[:i] + event.key + pagecontents[i:]
+            if event.key == "Space":
+                pass
+                #same as above excent replace event.key with " "
+            if event.key == "Backspace":
+                pass
+                #remove the string at the index of the cursor
+            if event.key == "Enter":
+                #add a newline at cursor index
+                pass
 
     #overflow (need to keep track of page width)
+
+    #mouse cursor
 
     ###############################################
     #Page management
@@ -115,6 +147,25 @@ class EditorMode(Mode):
 
     #lastTag
 
+    ##############################################
+    #Draw Menus
+    ##############################################
+
+    def drawTopMenu(self, canvas):
+        buttonWidth = 60
+        canvas.create_rectangle(0, 0, self.width, self.menuHeight, fill= "white", width=0)
+        drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.closeEditor, text="Close", w=buttonWidth)
+
+    def drawBotMenu(self,canvas):
+        canvas.create_rectangle(0, self.height - self.menuBotHeight, self.width, self.height, fill= "white", width=0)
+
+    def redrawAll(self, canvas):
+        canvas.create_rectangle(0, 0, self.width, self.height, fill= "light grey", width=0)
+        self.drawTopMenu(canvas)
+        self.drawBotMenu(canvas)
+        
+        
+
 
 
 class LibraryMode(Mode):
@@ -142,6 +193,7 @@ class LibraryMode(Mode):
         self.documents.append(doc1)
         self.documents.append(doc2)
         self.documents.append(doc3)
+        self.shownDocs = self.documents
         if len(self.documents) > 1:
             self.selectedDocument = self.documents[0]
         else:
@@ -150,20 +202,28 @@ class LibraryMode(Mode):
         self.topSearch = SearchBar(self, self.offsetX + searchBoxWidth//2, self.menuHeight - self.offsetY*2, searchBoxWidth)
 
     def mousePressed(self, event):
+        """Handles the gui response to mouse presses."""
+        if len(self.shownDocs) > 1:
+            self.selectDoc(event)
+        self.selectSearch(event)
+        
+    def selectDoc(self, event):
         """Selects documents in the grid based on mouse press coords. Launches editor
         on if selected document is clicked again."""
         row = (event.y - self.menuHeight)//self.cellHeight
         col = (event.x - (self.width//2 - self.displayWidth))//self.cellWidth
         index = col + row*self.cols
-        if 0 <= index < len(self.documents):
+        if 0 <= index < len(self.documents) and 0<=row<self.rows and 0<=col<self.cols:
             if self.documents[index] != self.selectedDocument:
                 self.selectedDocument = self.documents[index]
                 print("click1")
             elif self.documents[index] == self.selectedDocument:
-                #TODO: open that selected document in editor
                 print("click2")
+                #TODO: open that selected document in editor
+                self.setActiveMode("editor")
 
-        #sets searchbar istyping to false if clicked not on the box
+    def selectSearch(self, event):
+        """Sets searchbar istyping to false if clicked not on the box."""
         if self.topSearch.isTyping == True:
             if not ((self.topSearch.cx - self.topSearch.boxWidth//2) <= event.x <= (self.topSearch.cx + self.topSearch.boxWidth//2) and
                 (self.topSearch.cy - self.topSearch.boxHeight//2) <= event.y <= (self.topSearch.cy + self.topSearch.boxHeight//2)):
@@ -171,14 +231,25 @@ class LibraryMode(Mode):
     
     def keyPressed(self, event):
         if self.topSearch.isTyping == True:
-            if event.key in "abcdefghijklmnopqrstuvwxyz1234567890":
+            alphabet= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            numbers = "0123456789"
+            symbols = "!@#$%^&*()'.,<>/?\|]}[{+_-=;:"
+            if (event.key in alphabet or event.key in numbers or event.key in symbols
+                or event.key == '"'):
                 self.topSearch.searchInput += event.key
+            if event.key == "Space":
+                self.topSearch.searchInput += " "
             if event.key == "Backspace":
                 self.topSearch.searchInput = self.topSearch.searchInput[:-1]
             if event.key == "Enter":
-                pass
-                #callsearch method on the input
-
+                self.searchMatch()
+    
+    def searchMatch(self):
+        matchedDocs = []
+        for doc in self.documents:
+            if self.topSearch.searchInput.lower() in doc.title.lower():
+                matchedDocs.append(doc)
+        self.shownDocs = matchedDocs
 
     def drawHighlight(self, canvas):
         selectedIndex = self.documents.index(self.selectedDocument)
@@ -241,7 +312,7 @@ class LibraryMode(Mode):
     ########################################
 
     def drawGrid(self, canvas):
-        for i in range(len(self.documents)):
+        for i in range(len(self.shownDocs)):
             row = i // self.cols
             col = i % self.rows
             cx = col * self.cellWidth + self.cellWidth//2 + (self.width//2-self.displayWidth)
@@ -253,7 +324,7 @@ class LibraryMode(Mode):
             #y1 = y0 + self.cellHeight
             #canvas.create_rectangle(x0,y0,x1,y1,outline="grey")
             #draw document[i] at center of cell
-            self.documents[i].drawThumbnail(canvas, cx, cy)
+            self.shownDocs[i].drawThumbnail(canvas, cx, cy)
 
     #####################################################################################
     #TYPING CAN BE ITS OWN SEPARATE FUNCTION SINCE IT WILL BE REUSED IN MULTIPLE PLACES:
@@ -320,7 +391,7 @@ class LibraryMode(Mode):
         #this is for testing purposes:
         #canvas.create_rectangle(self.width//2 - self.displayWidth, self.menuHeight, self.width//2 + self.displayWidth,
             #self.height - self.menuBotHeight, outline="grey")
-        if self.selectedDocument != None:
+        if self.selectedDocument != None and len(self.shownDocs) > 0:
             self.drawHighlight(canvas)
         self.drawGrid(canvas)
         self.drawTopMenu(canvas)
