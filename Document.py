@@ -3,6 +3,8 @@
 
 from cmu_112_graphics import *
 from gui_functions import *
+from Page import *
+from Tag import *
 
 class Document(): #careful about timestamps, they may need to be strings to preserve zeroes.
     def __init__(self, app, path, title, make_timestamp, tags=[], pages=[]):
@@ -13,16 +15,46 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         self.title = title
         self.pages = pages
         self.tags = tags
+        self.currPage = None
+        #This loads all the tags both internal and external to the document.
+        #and sets current page if there are pages
+        if len(self.pages) > 0:
+            self.currPage = 0
+            for page in self.pages:
+                if len(page.tags) > 0:
+                    for tag in page.tags:
+                        if tag not in self.tags:
+                            self.tags.append(tag)
         self.make_timestamp = make_timestamp
         self.edit_timestamp = None #TODO: write function to update this value
-        self.currPage = 0
         self.docWidth = self.app.libraryWidth // 4 - 20
         self.docHeight = self.app.libraryHeight // 4 - 20
         self.thumbnailWidth = 16 #this is the number of characters that can fit on one line
 
+        ###################################################################################
+        #Variables for drawing tags
+        ###################################################################################
+        self.halfWidth = self.docWidth//2
+        self.halfHeight = self.docHeight//2
+        self.tagHeight = self.docHeight//12
+        self.tagMargin = 4
+        self.tagPaddingX = 6
+        self.tagPaddingY = 2
+
+    
+    ##############################################################################
+    #Magic Methods
+    ##############################################################################
+    def __repr__(self):
+        return self.title
+
+    ############################################################################
+    #Editing methods + Pageflipping
+    ############################################################################
+
     def addTag(self, newTag):
         """Adds a tag to the list of tags."""
-        self.tags.append(newTag)
+        self.tags.append(Tag(newTag))
 
     def editTag(self, newTags):
         """Replaces the tags with a new list of tags"""
@@ -34,9 +66,9 @@ class Document(): #careful about timestamps, they may need to be strings to pres
 
     def rename(self, newName):
         self.title = newName
-        #write to file
+        #TODO: write to file
 
-    def deletePage(selft):
+    def deletePage(self):
         """Takes in a pageIndex and removes it from the list of pages."""
         if len(self.pages) > self.currPage: # this should always be true
             self.pages.pop(self.currPage)
@@ -46,8 +78,15 @@ class Document(): #careful about timestamps, they may need to be strings to pres
     
     def addPage(self):
         """Adds a new blank page at the index after the current page."""
-        newPageIndex = self.currPage + 1
-        self.pages.insert(newPageIndex, Page())
+        if len(self.pages) > 0:
+            newPageIndex = self.currPage + 1
+        else:
+            newPageIndex = 0
+        self.pages.insert(newPageIndex, Page(self))
+        #switch pages to the newly created page
+        self.currPage = newPageIndex
+        print(self.currPage)
+        print(str(self.pages))
 
     def flipForward(self):
         """flips to the next page if it is not the last page. returns true if successful"""
@@ -103,33 +142,55 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         thumbnailText = '\n'.join(page)
         return thumbnailText
     
-    
+    ############################################################################
+    #Drawing functions
+    ############################################################################
+
     def drawThumbnail(self, canvas, cx:int, cy:int):
         """Draws a thumbnail of the document around the given center coordinates."""
-        halfWidth = self.docWidth//2
-        halfHeight = self.docHeight//2
-        tagHeight = self.docHeight//12
-        tagMargin = 4
-        tagPaddingX = 6
-        tagPaddingY = 2
-        leftAnchor = cx - halfWidth + 12
+        leftAnchor = cx - self.halfWidth + 12
 
         #draw rectangle
-        canvas.create_rectangle(cx - halfWidth, cy - halfHeight, cx + halfWidth, cy + halfHeight, fill="white",
+        canvas.create_rectangle(cx - self.halfWidth, cy - self.halfHeight, cx + self.halfWidth, cy + self.halfHeight, fill="white",
             width=0)
         #draw title text
-        canvas.create_text(cx, cy - (halfHeight*(6/7)), anchor= "n", font= ("Courier New", 9, "normal"), 
+        canvas.create_text(cx, cy - (self.halfHeight*(6/7)), anchor= "n", font= ("Courier New", 9, "normal"), 
             text= f"{self.thumbnailWraparound()}", fill="grey20")
 
         #draw tags
         #TODO: Clean up the variables in this code!
         for i in range(len(self.tags)):
-            tagLength = len(self.tags[i])* 7 + tagPaddingX*2
-            tagHeight = 14 + tagPaddingY
+            tagLength = len(self.tags[i].name)* 7 + self.tagPaddingX*2
+            tagHeight = 14 + self.tagPaddingY
             row = i
-            roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + tagMargin),
-                leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + tagMargin), radius=6, fill="gold")
+            roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + self.tagMargin),
+                leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + self.tagMargin), radius=6, fill=f"{self.tags[i].color}")
             #TODO: have this use the color and name of the tag object
-            canvas.create_text(leftAnchor + tagPaddingX, cy + row*(tagHeight + tagMargin),
-                anchor="nw", font=("Courier New", 8, "normal"), text=f"{self.tags[i]}")
+            canvas.create_text(leftAnchor + self.tagPaddingX, cy + row*(tagHeight + self.tagMargin),
+                anchor="nw", font=("Courier New", 8, "normal"), text=f"{self.tags[i].name}")
+
+    def drawDocPage(self, canvas):
+        pass
+        #call page drawing function for the current page
+        #if len(self.pages) > 0:
+            #wordsToDraw = self.pages[self.currPage].words
+            #create canvas object with wordsToDraw
+
+    def drawCurrTags(self, canvas, cx:int, cy:int):
+        leftAnchor = cx - self.halfWidth + 12
+        labelOffsetY = 30
+
+        canvas.create_text(cx, cy - labelOffsetY, text="Page Tags:")
+
+        if self.currPage != None:
+            currTags = self.pages[self.currPage].tags
+
+            for i in range(len(currTags)):
+                tagLength = len(currTags[i].name)* 7 + self.tagPaddingX*2
+                tagHeight = 14 + self.tagPaddingY
+                row = i
+                roundRectangle(canvas, leftAnchor, cy + row*(tagHeight + self.tagMargin),
+                    leftAnchor + tagLength, cy + tagHeight + row*(tagHeight + self.tagMargin), radius=6, fill=f"{currTags[i].color}")
+                canvas.create_text(leftAnchor, cy + row*(tagHeight + self.tagMargin),
+                    anchor="nw", font=("Courier New", 8, "normal"), text=f"{currTags[i].name}")
 

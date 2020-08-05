@@ -6,9 +6,16 @@ from cmu_112_graphics import *
 import tkinter.simpledialog as sd
 #CITATION: pickle from https://docs.python.org/3/library/pickle.html
 import pickle
+#CITATION: tkinter from https://docs.python.org/3/library/tkinter.html
+#import tkinter as tk
+from tkinter import *
+
 from Document import *
 from gui_functions import *
 from Searchbar import *
+from Dropdown import *
+from Tag import *
+from Page import *
 
 class WritingApp(ModalApp):
     def appStarted(self):
@@ -54,6 +61,7 @@ class EditorMode(Mode):
         self.offsetY = 8
         self.titleSize = 11
         self.subtitleSize = 10
+        self.pageWidth = 600
 
     def closeEditor(self):
         """Onclick method for when the close button is clicked."""
@@ -61,6 +69,11 @@ class EditorMode(Mode):
 
     def modeActivated(self):
         self.appStarted()
+    
+    """ def create_widget(self, canvas):
+        
+        text=Text(canvas, height=100, width=100)
+        text.grid() """
 
 
     ###############################################
@@ -156,16 +169,21 @@ class EditorMode(Mode):
         canvas.create_rectangle(0, 0, self.width, self.menuHeight, fill= "white", width=0)
         drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.closeEditor, text="Close", w=buttonWidth)
 
-    def drawBotMenu(self,canvas):
+    def drawBotMenu(self, canvas):
         canvas.create_rectangle(0, self.height - self.menuBotHeight, self.width, self.height, fill= "white", width=0)
+        drawButton(canvas, self.width*(3/4), self.height - self.menuBotHeight//2, onClick = self.currDoc.addPage, text="+Page")
+
+    def drawSidebar(self, canvas):
+        offsetY = 60
+        self.currDoc.drawCurrTags(canvas, self.width*(9/10), self.menuHeight + offsetY)
 
     def redrawAll(self, canvas):
         canvas.create_rectangle(0, 0, self.width, self.height, fill= "light grey", width=0)
         self.drawTopMenu(canvas)
         self.drawBotMenu(canvas)
+        self.drawSidebar(canvas)
         
         
-
 
 
 class LibraryMode(Mode):
@@ -185,11 +203,17 @@ class LibraryMode(Mode):
         self.offsetY = 8
         self.titleSize = 11
         self.subtitleSize = 10
+        self.dividerX = 180
         self.highlightWidth = 14
         self.documents = []
-        doc1 = Document(self, "filepath1", "15-112: Fundamentals of Computer Science", "1141", ["short", "very long tag", "medium"], ["abcdefg", "qrstuv"])
-        doc2 = Document(self, "filepath2", "How People Work", "0127", ["notes"], ["abcdefg", "qrstuv"])
-        doc3 = Document(self, "filepath3", "Another Book", "0242", ["notes", "misc"], ["page1contents", "page2contents"])
+        tag1 = Tag("short")
+        tag2 = Tag("very long tag")
+        tag3 = Tag("notes")
+        page1 = Page(self, "abcdefg", [tag1, tag2])
+        page2 = Page(self, "blahblah")
+        doc1 = Document(self, "filepath1", "15-112: Fundamentals of Computer Science", "1141", [tag3], [page1, page2])
+        doc2 = Document(self, "filepath2", "How People Work", "0127", [tag1, tag2], [page2])
+        doc3 = Document(self, "filepath3", "Another Book", "0242", [tag3], [page2])
         self.documents.append(doc1)
         self.documents.append(doc2)
         self.documents.append(doc3)
@@ -200,6 +224,9 @@ class LibraryMode(Mode):
             self.selectedDocument = None
         searchBoxWidth = 150
         self.topSearch = SearchBar(self, self.offsetX + searchBoxWidth//2, self.menuHeight - self.offsetY*2, searchBoxWidth)
+        self.sortItems = ["Title", "Last edited", "Last created"]
+        #TODO: get the function calls working correctly
+        self.dropdown = SortDropdown(self, self.dividerX + searchBoxWidth, self.menuHeight*(1/3), self.sortItems)
 
     def mousePressed(self, event):
         """Handles the gui response to mouse presses."""
@@ -262,15 +289,19 @@ class LibraryMode(Mode):
         canvas.create_rectangle(cx - highlightX, cy - highlightY, cx + highlightX,
             cy + highlightY, fill="cornflower blue", width=0)
 
-    #newDoc
-        #opens panel where title and timestamp can be entered
+    ###################################################
+    #Document Creation/Deletion
+    ###################################################
 
-    #newDocCancel (onclick method)
-        #closes the panel opened by newDoc
-
-    #newDocDone (onclick method)
-        #creates a new file in the directory with the given name and timestamp from newDoc. starts blank, with no tags
-        #opens the document in the editor
+    def newDocPopup(self):
+        answer = simpledialog.askstring("Create", "What would you like to name your document?")
+        if answer != None:
+            #create filepath
+            #get timestamp
+            new = Document(self, "filepath", answer, "0000")
+            self.documents.append(new)
+            self.selectedDocument = new
+            self.setActiveMode("editor")
 
     #delDoc
         #deletes the file located at the path of the currently selected document
@@ -282,19 +313,21 @@ class LibraryMode(Mode):
     def drawTopMenu(self, canvas):
         """Draws the top menu which contains the search bar, sort and filter options,
         and create new document button."""
-        dividerX = 180
+        buttonWidth = 60
 
         canvas.create_rectangle(0, 0, self.width, self.menuHeight, fill= "white", width=0)
         canvas.create_text(self.offsetX, self.offsetY, anchor="nw", font=f"Arial {self.titleSize} normal", text="Search:")
         self.topSearch.drawBox(canvas)
-        canvas.create_line(dividerX, self.offsetY, dividerX, self.menuHeight - self.offsetY, width=2, fill="light grey")
-        #sort text
-        canvas.create_text(dividerX + self.offsetX, self.offsetY, anchor = "nw", font=f"Arial {self.titleSize} normal", text="Sort by:")
+        canvas.create_line(self.dividerX, self.offsetY, self.dividerX, self.menuHeight - self.offsetY, width=2, fill="light grey")
+        canvas.create_text(self.dividerX + self.offsetX, self.offsetY, anchor = "nw", font=f"Arial {self.titleSize} normal", text="Sort by:")
         #sort dropdown
+        self.dropdown.drawDDMenu(canvas)
         #filter text
-        canvas.create_text(dividerX + self.offsetX, self.menuHeight - self.offsetY, anchor = "sw", font=f"Arial {self.titleSize} normal", text="Filter tag:")
-        #filter display (max 4)
+        canvas.create_text(self.dividerX + self.offsetX, self.menuHeight - self.offsetY, anchor = "sw", font=f"Arial {self.titleSize} normal", text="Filter tag:")
+        #TODO: filter display (max 4)
         #new doc button
+        drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.newDocPopup, text="New Doc", w=buttonWidth)
+
 
     def drawBotMenu(self, canvas):
         """Draws the lower menu that contains the options for the selected file"""
@@ -363,11 +396,7 @@ class LibraryMode(Mode):
     #sort keys: title, time, tag
     #mutable/destructive sort which changes the indexes of the items in the list
         
-    #def sortTime (sorts by time)
-        #documents.sort(documents, key=attrgetter('timestamp', 'title'))
     
-    #def sortTitle (sorts alphabetical order A-Z)
-        #documents.sort(documents, key=attrgetter('title', 'timestamp'))
 
     #def sortTag (sorts alphabetically by tag)
 

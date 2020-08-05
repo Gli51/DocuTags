@@ -33,14 +33,3 @@ def roundRectangle(canvas, x1, y1, x2, y2, radius=25, **kwargs):
                 x1, y1]
 
         canvas.create_polygon(points, **kwargs, smooth=True)
-
-
-#def dropdownMenu(canvas, items)
-    #would need scrolling functionality?
-    #sort items alphabetically (A-Z)
-    #if items is an empty list, draw a single blank rectangle
-    #for i in range(len(items):
-        #draw rectangle with coordinates multiplied by i
-        #draw text in center of rectangle (cy multiplied by i, cx constant)
-
-    #each of the rectangles might call an onclick? need to select items from dropdown somehow.

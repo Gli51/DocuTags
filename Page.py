@@ -1,9 +1,11 @@
+from Tag import *
+
 class Page():
     def __init__(self, app, words = "", tags = []):
         """Initializes page class with contents and tags."""
         self.app = app
         self.words = words
-        self.internalTags = tags
+        self.tags = tags
         self.PageWidth = 30
 
     def getWordCount(self):
@@ -14,6 +16,12 @@ class Page():
     def getCharCount(self):
         """Returns the number of characters (including spaces) on the page"""
         return len(self.words)
+
+    ###########################################################################
+    #Magic Methods
+    ###########################################################################
+    def __repr__(self):
+        return "page"
 
     def __add__(self, other):
         """Adds words to a page. If Page, adds the words on that Page to the words
@@ -31,3 +39,13 @@ class Page():
     def lines(self):
         """Returns list of words that appear on each line based off of the page width."""
         pass
+
+    def addPageTag(self, newTag:str):
+        #newTag is just the name of the new tag
+        self.tags.append(Tag(newTag))
+
+    def delPageTag(self, tag:str):
+        #deletes tag on page by tag name
+        for tag in self.tags:
+            if tag.name == tag:
+                self.tags.remove(tag)
