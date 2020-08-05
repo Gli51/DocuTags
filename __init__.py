@@ -65,6 +65,8 @@ class EditorMode(Mode):
         self.pageWidth = 560
         self.pagePosX = self.width* (5/11)
         self.pageHeight = 790 - self.menuBotHeight - self.offsetY
+        self.isWriting = True #only set isWriting to false when isSearching is set to True
+        self.isSearching = False
 
     def closeEditor(self):
         """Onclick method for when the close button is clicked."""
@@ -91,21 +93,25 @@ class EditorMode(Mode):
         #(writeFile)
     
     def keyPressed(self, event):
-            #if not typing in search bar:
             alphabet= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
             numbers = "0123456789"
             symbols = "!@#$%^&*()'.,<>/?\|]}[{+_-=;:"
             if (event.key in alphabet or event.key in numbers or event.key in symbols
                 or event.key == '"'):
-                pass
+                if self.isWriting == True and len(self.currDoc.pages) > 0:
+                    self.currDoc.pages[self.currDoc.currPage].words += event.key
                 #set page contents equal to page contents[:i] + event.key + pagecontents[i:]
             if event.key == "Space":
-                pass
+                if self.isWriting == True and len(self.currDoc.pages) > 0:
+                    self.currDoc.pages[self.currDoc.currPage].words += " "
                 #same as above excent replace event.key with " "
             if event.key == "Backspace":
-                pass
+                if self.isWriting == True and len(self.currDoc.pages) > 0:
+                    self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
                 #remove the string at the index of the cursor
             if event.key == "Enter":
+                if self.isWriting == True and len(self.currDoc.pages) > 0:
+                    pass
                 #add a newline at cursor index
                 pass
 
@@ -208,6 +214,7 @@ class EditorMode(Mode):
 
 class LibraryMode(Mode):
     def appStarted(self): 
+        self.editmode = self.getMode("editor")
         self.menuHeight = self.height//14
         self.menuBotHeight = self.height//16
         self.displayWidth = 300

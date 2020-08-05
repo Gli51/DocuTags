@@ -215,8 +215,9 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         #call page drawing function for the current page
         if len(self.pages) > 0:
             canvas.create_rectangle(x0, y0, x1, y1, fill="white", width=0)
-            #wordsToDraw = self.pages[self.currPage].words
-            #create canvas object with wordsToDraw
+            wordsToDraw = self.pages[self.currPage].words
+            canvas.create_text(self.app.editmode.pagePosX - self.app.editmode.pageWidth//2 + self.app.editmode.offsetX,
+                self.app.editmode.menuHeight + self.app.editmode.offsetY, anchor="nw", text=f"{wordsToDraw}")
 
     def drawCurrTags(self, canvas, cx:int, cy:int):
         """Draws a column of the tags on the current page given location coords."""
