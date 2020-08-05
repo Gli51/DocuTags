@@ -335,7 +335,8 @@ class LibraryMode(Mode):
         canvas.create_rectangle(0, self.height - self.menuBotHeight, self.width, self.height, fill= "white", width=0)
         if self.selectedDocument != None:
             drawButton(canvas, self.width//4, self.height - self.menuBotHeight//2, onClick = self.renamePopup, text= "Rename")
-            drawButton(canvas, self.width//4 + self.offsetX + buttonWidth, self.height - self.menuBotHeight//2, onClick = self.editTagPopup, text= "Edit Tags")
+            drawButton(canvas, self.width//4 + self.offsetX + buttonWidth, self.height - self.menuBotHeight//2, onClick = self.addTagPopup, text= "Add doctag")
+            drawButton(canvas, self.width//4 + (self.offsetX + buttonWidth)*2, self.height - self.menuBotHeight//2, onClick = self.delTagPopup, text= "Delete tags")
             #draw button for
 
 
@@ -377,16 +378,29 @@ class LibraryMode(Mode):
             #TODO: write new title to file
     
 
-    def editTagPopup(self):
-        answer = simpledialog.askstring("Edit tags", "Separate tags by commas")
+    def addTagPopup(self):
+        descrip = """Add a general tag to your document.\n
+        (Separate tags by commas without spaces)"""
+        answer = simpledialog.askstring("Add doctags", descrip)
         if answer != None:
             newTags = []
             for elem in answer.split(","):
-                newTags.append(elem) #TODO: replace this so it works with tag objects
-                #newTag.append(Tag(elem))
-            self.selectedDocument.editTag(newTags)
+                newTags.append(elem)
+            self.selectedDocument.addDocTag(newTags)
 
-    #docTagDone (onclick method for when done button is clicked)
+    def delTagPopup(self):
+        """Removes all instances of an inputted tag from the book, including its pages."""
+
+        descrip = """WARNING: Will remove all instances of tag from the document\n
+        (Separate tags by commas without spaces)"""
+
+        answer = simpledialog.askstring("Remove tags", descrip)
+        if answer != None:
+            removedTags = []
+            for elem in answer.split(","):
+                removedTags.append(elem)
+            self.selectedDocument.delTag(removedTags)
+
 
     ############################################
     #Sort

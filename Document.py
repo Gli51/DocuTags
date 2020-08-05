@@ -14,17 +14,13 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         self.path = path
         self.title = title
         self.pages = pages
-        self.tags = tags
+        self.doctags = tags
+        self.tags = self.doctags
         self.currPage = None
+        self.updatePages()
+        self.updateTags()
         #This loads all the tags both internal and external to the document.
         #and sets current page if there are pages
-        if len(self.pages) > 0:
-            self.currPage = 0
-            for page in self.pages:
-                if len(page.tags) > 0:
-                    for tag in page.tags:
-                        if tag not in self.tags:
-                            self.tags.append(tag)
         self.make_timestamp = make_timestamp
         self.edit_timestamp = None #TODO: write function to update this value
         self.docWidth = self.app.libraryWidth // 4 - 20
@@ -52,13 +48,45 @@ class Document(): #careful about timestamps, they may need to be strings to pres
     #Editing methods + Pageflipping
     ############################################################################
 
-    def addTag(self, newTag):
-        """Adds a tag to the list of tags."""
-        self.tags.append(Tag(newTag))
+    def addDocTag(self, newTags):
+        """Adds tags to the list of tags."""
+        for elem in newTags:
+            #if tag already exists on another document, use the same color for the tag
+            for document in self.app.documents:
+                for tag in document.tags:
+                    if tag.name == elem:
+                        self.doctags.append(Tag(elem, tag.color))
+                        return
+            self.doctags.append(Tag(elem))
+            self.updateTags()
 
-    def editTag(self, newTags):
-        """Replaces the tags with a new list of tags"""
-        self.tags = newTags
+    def delTag(self, tags):
+        """Deletes all instances of that tag from the document, including pages."""
+        for elem in tags:
+            for doctag in self.doctags:
+                if doctag.name == elem:
+                    self.doctags.remove(doctag)
+            for page in self.pages:
+                for pagetag in page.tags:
+                    if pagetag.name == elem:
+                        page.tags.remove(pagetag)
+            self.updateTags()
+
+
+    def updateTags(self):
+        """Method that updates the list of all tags in document. Called when
+        doctags or pagetags/internal tags are edited."""
+        self.tags = self.doctags
+        if len(self.pages) > 0:
+            for page in self.pages:
+                if len(page.tags) > 0:
+                    for tag in page.tags:
+                        if tag not in self.doctags:
+                            self.tags.append(tag)
+
+    def updatePages(self):
+        if len(self.pages) > 0:
+            self.currPage = 0
 
     def getTags(self) -> list:
         """returns a list of tags."""
