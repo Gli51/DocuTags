@@ -18,7 +18,7 @@ class Tag():
     #tags have a name and a color
 
     def __repr__(self):
-        return self.name + self.color
+        return self.name
 
     def changeColor(self, newColor: str):
         """Changes color to a hexcode of newColor."""

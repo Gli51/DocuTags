@@ -19,7 +19,7 @@ class SortDropdown():
         else:
             self.selecting = False
     
-    def chooseItem(self, text):
+    def chooseItem(self):
         """Onclick method that calls sort function corresponding to given text."""
         if text == "Title":
             self.sortTitle()
@@ -32,9 +32,17 @@ class SortDropdown():
     #each of the rectangles might call an onclick? need to select items from dropdown somehow.
     def drawItem(self, canvas, text, i):
         """Draws a cell given cell text, an index, and text color."""
+        if text == "Title":
+            sortFunc = self.sortTitle()
+        if text == "Last edited":
+            sortFunc = self.sortEditTime()
+        if text == "Last created":
+            sortFunc = self.sortMakeTime()
+        self.selecting = False
+
         cy = self.cy + self.boxHeight + self.boxHeight*i
         canvas.create_rectangle(self.cx - self.boxWidth//2, cy - self.boxHeight//2,
-            self.cx + self.boxWidth//2, cy + self.boxHeight//2, fill="light grey", outline="white", width = 2, onClick=self.chooseItem(text))
+            self.cx + self.boxWidth//2, cy + self.boxHeight//2, fill="light grey", outline="white", width = 2, onClick=sortFunc)
         canvas.create_text(self.cx, cy, text=text)
 
     def sortEditTime(self):

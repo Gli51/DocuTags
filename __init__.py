@@ -111,11 +111,13 @@ class EditorMode(Mode):
                 #remove the string at the index of the cursor
             if event.key == "Enter":
                 if self.isWriting == True and len(self.currDoc.pages) > 0:
-                    pass
+                    self.currDoc.pages[self.currDoc.currPage].words += "\n"
                 #add a newline at cursor index
-                pass
+            self.overflow()
 
-    #overflow (need to keep track of page width)
+    def overflow(self):
+        if len(self.currDoc.pages[self.currDoc.currPage].words) % 86 == 0:
+            self.currDoc.pages[self.currDoc.currPage].words += "\n"
 
     #mouse cursor
 
@@ -254,6 +256,7 @@ class LibraryMode(Mode):
         self.sortItems = ["Title", "Last edited", "Last created"]
         #TODO: get the function calls working correctly
         self.dropdown = SortDropdown(self, self.dividerX + searchBoxWidth, self.menuHeight*(1/3), self.sortItems)
+        self.showingTags = False
 
     def mousePressed(self, event):
         """Handles the gui response to mouse presses."""
@@ -355,6 +358,11 @@ class LibraryMode(Mode):
         #new doc button
         drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.newDocPopup, text="New Doc", w=buttonWidth)
 
+    def showAllTags(self):
+        if self.showingTags == False:
+            self.showingTags = True
+        else:
+            self.showingTags = False
 
     def drawBotMenu(self, canvas):
         """Draws the lower menu that contains the options for the selected file"""
@@ -364,7 +372,7 @@ class LibraryMode(Mode):
             drawButton(canvas, self.width//4, self.height - self.menuBotHeight//2, onClick = self.renamePopup, text= "Rename")
             drawButton(canvas, self.width//4 + self.offsetX + buttonWidth, self.height - self.menuBotHeight//2, onClick = self.addTagPopup, text= "Add doctag")
             drawButton(canvas, self.width//4 + (self.offsetX + buttonWidth)*2, self.height - self.menuBotHeight//2, onClick = self.delTagPopup, text= "Delete tags")
-            #draw button for
+            drawButton(canvas, self.width*(3/4), self.height - self.menuBotHeight//2, onClick=self.showAllTags, text= "Show All Tags", w = 100)
 
 
 
@@ -406,26 +414,34 @@ class LibraryMode(Mode):
     
 
     def addTagPopup(self):
+        """Adds a doctag to the document. Not case sensitive."""
+
         descrip = """Add a general tag to your document.\n
-        (Separate tags by commas without spaces)"""
+        (Separate tags by commas. Not case sensitive)"""
         answer = simpledialog.askstring("Add doctags", descrip)
         if answer != None:
             newTags = []
             for elem in answer.split(","):
-                newTags.append(elem)
-            self.selectedDocument.addDocTag(newTags)
+                print("#", elem)
+                if not elem.lower() in self.selectedDocument.tags: #TODO: for some reason this guard doesnt work
+                    print(elem.lower())
+                    print(self.selectedDocument.tags)
+                    newTags.append(elem.strip())
+            if newTags != []:
+                self.selectedDocument.addDocTag(newTags)
 
     def delTagPopup(self):
-        """Removes all instances of an inputted tag from the book, including its pages."""
+        """Removes all instances of an inputted tag from the book, including its pages.
+        Not case sensitive."""
 
         descrip = """WARNING: Will remove all instances of tag from the document\n
-        (Separate tags by commas without spaces)"""
+        (Separate tags by commas. Not case sensitive)"""
 
         answer = simpledialog.askstring("Remove tags", descrip)
         if answer != None:
             removedTags = []
             for elem in answer.split(","):
-                removedTags.append(elem)
+                removedTags.append(elem.strip())
             self.selectedDocument.delTag(removedTags)
 
 
@@ -466,6 +482,8 @@ class LibraryMode(Mode):
         self.drawGrid(canvas)
         self.drawTopMenu(canvas)
         self.drawBotMenu(canvas)
+        if self.showingTags == True:
+            self.selectedDocument.drawAllTags(canvas)
         
 
 def main():
