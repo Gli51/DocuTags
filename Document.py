@@ -65,6 +65,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             else:      
                 self.doctags.append(Tag(elem.lower()))
         self.updateTags()
+        #TODO: write to file
 
     def delTag(self, tags):
         """Deletes all instances of that tag from the document, including pages."""
@@ -77,6 +78,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
                     if pagetag.name == elem:
                         page.tags.remove(pagetag)
             self.updateTags()
+            #TODO: write to file
 
 
     def updateTags(self):
@@ -122,11 +124,12 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             newPageIndex = self.currPage + 1 #TODO: UPDATE THIS SO CREATING NEW PAGES GOES TO THE NEW PAGE
         else:
             newPageIndex = 0
-        self.pages.insert(newPageIndex, Page(self))
+        self.pages.insert(newPageIndex, Page(self.app))
         #switch pages to the newly created page
         #the page number should always be one greater than the list index
         self.currPage = newPageIndex
         self.currPageNum = self.currPage + 1
+        self.app.editmode.cursorCol, self.app.editmode.cursorRow = 0, 0 
 
     def flipForward(self):
         """flips to the next page if it is not the last page. returns true if successful"""
@@ -220,9 +223,15 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         #call page drawing function for the current page
         if len(self.pages) > 0:
             canvas.create_rectangle(x0, y0, x1, y1, fill="white", width=0)
+            
+    
+    def drawDocContents(self, canvas, x0, y0, x1, y1):
+        "Draws the words for the current page based off page size coords"
+        if len(self.pages) > 0:
             wordsToDraw = self.pages[self.currPage].words
             canvas.create_text(self.app.editmode.pagePosX - self.app.editmode.pageWidth//2 + self.app.editmode.offsetX,
-                self.app.editmode.menuHeight + self.app.editmode.offsetY*2, anchor="nw", text=f"{wordsToDraw}")
+                self.app.editmode.menuHeight + self.app.editmode.offsetY*2, anchor="nw",
+                font=("Courier New", 10, "normal"), text=f"{wordsToDraw}")
 
     def drawCurrTags(self, canvas, cx:int, cy:int):
         """Draws a column of the tags on the current page given location coords."""
@@ -250,20 +259,23 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         cx = self.app.width*(3/4)
         cy = self.app.height - self.app.menuBotHeight//2
         leftAnchor = cx - self.halfWidth + 12
-        numTags = len(self.tags)
-        boxHeight = 20 * numTags
+        buttonHalfHeight = 10
 
-        #draw rectangular background, height dependent on length of tag list
-        canvas.create_rectangle(cx - self.halfWidth, cy - boxHeight//2, cx + self.halfWidth, cy + boxHeight//2, fill="light grey",
-            width=2, outline="white")
+        if len(self.tags) > 0:
+            numTags = len(self.tags)
+            boxHeight = 20 * numTags
+        
+            #draw rectangular background, height dependent on length of tag list
+            canvas.create_rectangle(cx - self.halfWidth, cy - boxHeight - buttonHalfHeight, cx + self.halfWidth, cy- buttonHalfHeight, fill="light grey",
+                width=2, outline="white")
 
-        #TODO: Clean up the variables in this code!
-        for i in range(len(self.tags)):
-            tagLength = len(self.tags[i].name)* 7 + self.tagPaddingX*2
-            tagHeight = 14 + self.tagPaddingY
-            row = i
-            roundRectangle(canvas, leftAnchor, cy - row*(tagHeight + self.tagMargin),
-                leftAnchor + tagLength, cy - tagHeight - row*(tagHeight + self.tagMargin), radius=6, fill=f"{self.tags[i].color}")
-            canvas.create_text(leftAnchor + self.tagPaddingX, cy - row*(tagHeight + self.tagMargin),
-                anchor="nw", font=("Courier New", 8, "normal"), text=f"{self.tags[i].name}")
+            #TODO: Clean up the variables in this code!
+            for i in range(len(self.tags)):
+                tagLength = len(self.tags[i].name)* 7 + self.tagPaddingX*2
+                tagHeight = 14 + self.tagPaddingY
+                row = i
+                roundRectangle(canvas, leftAnchor, cy - tagHeight - row*(tagHeight + self.tagMargin) - buttonHalfHeight,
+                    leftAnchor + tagLength, cy - row*(tagHeight + self.tagMargin) - buttonHalfHeight, radius=6, fill=f"{self.tags[i].color}")
+                canvas.create_text(leftAnchor + self.tagPaddingX, cy - row*(tagHeight + self.tagMargin) - tagHeight - buttonHalfHeight,
+                    anchor="nw", font=("Courier New", 8, "normal"), text=f"{self.tags[i].name}")
 

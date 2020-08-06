@@ -63,10 +63,27 @@ class EditorMode(Mode):
         self.titleSize = 11
         self.subtitleSize = 10
         self.pageWidth = 560
-        self.pagePosX = self.width* (5/11)
+        self.pagePosX = int(self.width* (5/11))
         self.pageHeight = 790 - self.menuBotHeight - self.offsetY
         self.isWriting = True #only set isWriting to false when isSearching is set to True
         self.isSearching = False
+
+        #######################################################################
+        #Grid Variables
+        #######################################################################
+        self.gridCols = 66
+        self.gridRows = 40
+        self.letterWidth = 8
+        self.letterHeight = self.letterWidth * 2
+        self.pageMarginX = self.pagePosX - self.pageWidth//2 + self.offsetX
+        self.pageMarginY = self.menuHeight + self.offsetY*2
+
+        #######################################################################
+        #Cursor vars
+        #######################################################################
+        self.cursorRow = 0
+        self.cursorCol = 0
+
 
     def closeEditor(self):
         """Onclick method for when the close button is clicked."""
@@ -100,26 +117,59 @@ class EditorMode(Mode):
                 or event.key == '"'):
                 if self.isWriting == True and len(self.currDoc.pages) > 0:
                     self.currDoc.pages[self.currDoc.currPage].words += event.key
+                    self.cursorCol += 1
+                    self.overflow()
                 #set page contents equal to page contents[:i] + event.key + pagecontents[i:]
             if event.key == "Space":
                 if self.isWriting == True and len(self.currDoc.pages) > 0:
                     self.currDoc.pages[self.currDoc.currPage].words += " "
+                    self.cursorCol += 1
+                    self.overflow()
                 #same as above excent replace event.key with " "
             if event.key == "Backspace":
                 if self.isWriting == True and len(self.currDoc.pages) > 0:
-                    self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
-                #remove the string at the index of the cursor
+                    #TODO: need to consider the lines/rows too
+                    if self.currDoc.pages[self.currDoc.currPage].words[self.cursorCol-1] == "\n":
+                        self.cursorRow -= 1
+                        #set cursor col to the end of that line
+                        self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
+                    else:
+                        self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
+                        self.cursorCol -= 1
             if event.key == "Enter":
                 if self.isWriting == True and len(self.currDoc.pages) > 0:
                     self.currDoc.pages[self.currDoc.currPage].words += "\n"
+                    self.cursorRow += 1
+                    self.cursorCol = 0
                 #add a newline at cursor index
-            self.overflow()
-
+            if event.key == "Tab":
+                if self.isWriting == True and len(self.currDoc.pages) > 0:
+                    #adds tab expanded to spaces
+                    for i in range(4): #Goes to new line if the tab would go off the canvas
+                        if (len(self.currDoc.pages[self.currDoc.currPage].words) + i) % 66 == 0:
+                            self.currDoc.pages[self.currDoc.currPage].words += "\n"
+                            self.cursorRow += 1
+                            self.cursorCol = 0
+                            return
+                    self.currDoc.pages[self.currDoc.currPage].words += (" "*4)
+                    self.cursorCol += 4
+                    self.overflow()
+    #TODO: shouldn't count new lines as characters
     def overflow(self):
-        if len(self.currDoc.pages[self.currDoc.currPage].words) % 86 == 0:
+        #Ignores newlines when counting characters for overflow
+        newlineCount = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
+        if (len(self.currDoc.pages[self.currDoc.currPage].words) - newlineCount) % 66 == 0:
             self.currDoc.pages[self.currDoc.currPage].words += "\n"
+            self.cursorRow += 1
+            self.cursorCol = 0
 
-    #mouse cursor
+    def mousePressed(self, event):
+        crow = (event.y-self.pageMarginY) // self.letterHeight
+        ccol = (event.x-self.pageMarginX) // self.letterWidth
+        if 0 <= crow < self.gridRows and 0 <= ccol < self.gridCols:
+            self.cursorRow = crow
+            self.cursorCol = ccol
+            #set string line and string index here
 
     ###############################################
     #Popups
@@ -139,6 +189,33 @@ class EditorMode(Mode):
             answer = messagebox.askyesno("WARNING", descrip)
             if answer != False:
                 self.currDoc.deletePage()
+
+    def addPageTagPopup(self):
+        """Onclick method that opens popup when adding page tag"""
+        currPage = self.currDoc.currPage
+        if self.currDoc.currPage != None:
+            descrip = """Add page tags\n
+            (Separate tags by commas. Not case sensitive)"""
+            answer = simpledialog.askstring("Add Page Tag", descrip)
+            if answer != False:
+                newTags = []
+                for elem in answer.split(","):
+                    elem = elem.strip()
+                    newTags.append(elem)
+                self.currDoc.pages[currPage].addPageTag(newTags)
+
+    def delPageTagPopup(self):
+        """Onclick method that opens popup when removing page tag"""
+        currPage = self.currDoc.currPage
+        if self.currDoc.currPage != None:
+            descrip = """Delete page tags\n
+            (Separate tags by commas. Not case sensitive)"""
+            answer = simpledialog.askstring("WARNING", descrip)
+            if answer != False:
+                removedTags = []
+                for elem in answer.split(","):
+                    removedTags.append(elem.strip())
+                self.currDoc.pages[currPage].delPageTag(removedTags)
 
     ###############################################
     #Tag Creation
@@ -182,7 +259,11 @@ class EditorMode(Mode):
 
     def drawTopMenu(self, canvas):
         buttonWidth = 60
+        tagButtonWidth = 100
+
         canvas.create_rectangle(0, 0, self.width, self.menuHeight, fill= "white", width=0)
+        drawButton(canvas, self.width - tagButtonWidth*2 - (buttonWidth//2 + self.offsetX*2), self.menuHeight//2, onClick=self.addPageTagPopup,text="Add page tag", w=tagButtonWidth)
+        drawButton(canvas, self.width - tagButtonWidth - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.delPageTagPopup,text="Delete page tag", w=tagButtonWidth)
         drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.closeEditor, text="Close", w=buttonWidth)
 
     def drawBotMenu(self, canvas):
@@ -201,12 +282,34 @@ class EditorMode(Mode):
 
     def drawSidebar(self, canvas):
         offsetY = 60
+
         self.currDoc.drawCurrTags(canvas, self.width*(9/10), self.menuHeight + offsetY)
+    
+    def drawTextGrid(self, canvas):
+        for row in range(self.gridRows):
+            for col in range(self.gridCols):
+                x0 = col * self.letterWidth + self.pageMarginX
+                y0 = row * self.letterHeight + self.pageMarginY
+                x1 = x0 + self.letterWidth
+                y1 = y0 + self.letterHeight
+                canvas.create_rectangle(x0, y0, x1, y1, outline="light grey")
+    
+    def drawCursor(self, canvas):
+        x0 = self.cursorCol * self.letterWidth + self.pageMarginX
+        y0 = self.cursorRow * self.letterHeight + self.pageMarginY
+        x1 = x0 + self.letterWidth
+        y1 = y0 + self.letterHeight
+        canvas.create_rectangle(x0, y0, x1, y1, fill= "cornflower blue", width=0)
 
     def redrawAll(self, canvas):
         canvas.create_rectangle(0, 0, self.width, self.height, fill= "light grey", width=0)
         self.currDoc.drawDocPage(canvas, self.pagePosX - self.pageWidth//2, self.menuHeight + self.offsetY, self.pagePosX + self.pageWidth//2,
             self.pageHeight)
+        if len(self.currDoc.pages) > 0:
+            self.drawCursor(canvas)
+        self.currDoc.drawDocContents(canvas, self.pagePosX - self.pageWidth//2, self.menuHeight + self.offsetY, self.pagePosX + self.pageWidth//2,
+            self.pageHeight)
+        #self.drawTextGrid(canvas)
         self.drawTopMenu(canvas)
         self.drawBotMenu(canvas)
         self.drawSidebar(canvas)
@@ -257,6 +360,7 @@ class LibraryMode(Mode):
         #TODO: get the function calls working correctly
         self.dropdown = SortDropdown(self, self.dividerX + searchBoxWidth, self.menuHeight*(1/3), self.sortItems)
         self.showingTags = False
+        self.dropdownOpen = False
 
     def mousePressed(self, event):
         """Handles the gui response to mouse presses."""
@@ -270,13 +374,12 @@ class LibraryMode(Mode):
         row = (event.y - self.menuHeight)//self.cellHeight
         col = (event.x - (self.width//2 - self.displayWidth))//self.cellWidth
         index = col + row*self.cols
-        if 0 <= index < len(self.documents) and 0<=row<self.rows and 0<=col<self.cols:
-            if self.documents[index] != self.selectedDocument:
-                self.selectedDocument = self.documents[index]
+        if 0 <= index < len(self.shownDocs) and 0<=row<self.rows and 0<=col<self.cols:
+            if self.shownDocs[index] != self.selectedDocument:
+                self.selectedDocument = self.shownDocs[index]
                 print("click1")
-            elif self.documents[index] == self.selectedDocument:
+            elif self.shownDocs[index] == self.selectedDocument:
                 print("click2")
-                #TODO: open that selected document in editor
                 self.setActiveMode("editor")
 
     def selectSearch(self, event):
@@ -306,10 +409,16 @@ class LibraryMode(Mode):
         for doc in self.documents:
             if self.topSearch.searchInput.lower() in doc.title.lower():
                 matchedDocs.append(doc)
+         # TODO: sth weird with this. list index out of range
         self.shownDocs = matchedDocs
+        if matchedDocs != []:
+            self.selectedDocument = self.shownDocs[0]
+        else:
+            self.selectedDocument = None
+       
 
     def drawHighlight(self, canvas):
-        selectedIndex = self.documents.index(self.selectedDocument)
+        selectedIndex = self.shownDocs.index(self.selectedDocument) #TODO: currently broken. selectedDocument should always be in shownDocs
         row = selectedIndex // self.cols
         col = selectedIndex % self.rows
         cx = col * self.cellWidth + self.cellWidth//2 + (self.width//2-self.displayWidth)
@@ -326,15 +435,27 @@ class LibraryMode(Mode):
     def newDocPopup(self):
         answer = simpledialog.askstring("Create", "What would you like to name your document?")
         if answer != None:
-            #create filepath
-            #get timestamp
+            #TODO:create filepath
+            #TODO:get timestamp
             new = Document(self, "filepath", answer, "0000")
             self.documents.append(new)
+            #TODO: might be some issue with filters
+            self.shownDocs = self.documents
             self.selectedDocument = new
             self.setActiveMode("editor")
 
-    #delDoc
-        #deletes the file located at the path of the currently selected document
+    def delDocPopup(self):
+        if len(self.documents) > 0:
+            descrip = """Are you sure you want to delete this document?\n
+            Deleted documents cannot be recovered."""
+            answer = messagebox.askyesno("WARNING", descrip)
+            if answer == True:
+                #TODO: deletes the file located at the path of the currently selected document
+                self.documents.remove(self.selectedDocument)
+                if len(self.documents) == 0:
+                    self.selectedDocument = None
+                else:
+                    self.selectedDocument = self.shownDocs[0]
 
     ########################################
     #Menu bars
@@ -369,6 +490,7 @@ class LibraryMode(Mode):
         buttonWidth = 80
         canvas.create_rectangle(0, self.height - self.menuBotHeight, self.width, self.height, fill= "white", width=0)
         if self.selectedDocument != None:
+            drawButton(canvas, self.offsetX + buttonWidth//2, self.height - self.menuBotHeight//2, onClick = self.delDocPopup, text= "Delete")
             drawButton(canvas, self.width//4, self.height - self.menuBotHeight//2, onClick = self.renamePopup, text= "Rename")
             drawButton(canvas, self.width//4 + self.offsetX + buttonWidth, self.height - self.menuBotHeight//2, onClick = self.addTagPopup, text= "Add doctag")
             drawButton(canvas, self.width//4 + (self.offsetX + buttonWidth)*2, self.height - self.menuBotHeight//2, onClick = self.delTagPopup, text= "Delete tags")
@@ -395,12 +517,6 @@ class LibraryMode(Mode):
             #draw document[i] at center of cell
             self.shownDocs[i].drawThumbnail(canvas, cx, cy)
 
-    #####################################################################################
-    #TYPING CAN BE ITS OWN SEPARATE FUNCTION SINCE IT WILL BE REUSED IN MULTIPLE PLACES:
-    #TEXT EDITOR, RENAME DOCUMENT, EDIT TAGS, SEARCH BAR INPUTS
-    #####################################################################################
-
-    #searchLibrary (will probably use a similar structure to searchDoc in the editor mode)
 
     #####################################
     #Editing functions
@@ -421,12 +537,14 @@ class LibraryMode(Mode):
         answer = simpledialog.askstring("Add doctags", descrip)
         if answer != None:
             newTags = []
+            existingTags = []
+            for tag in self.selectedDocument.tags:
+                existingTags.append(tag.name)
             for elem in answer.split(","):
-                print("#", elem)
-                if not elem.lower() in self.selectedDocument.tags: #TODO: for some reason this guard doesnt work
-                    print(elem.lower())
-                    print(self.selectedDocument.tags)
+                if not (elem.lower() in existingTags):
                     newTags.append(elem.strip())
+                else:
+                    print("Doc already has this tag!") #TODO: maybe display this to user
             if newTags != []:
                 self.selectedDocument.addDocTag(newTags)
 

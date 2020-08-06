@@ -40,12 +40,37 @@ class Page():
         """Returns list of words that appear on each line based off of the page width."""
         pass
 
-    def addPageTag(self, newTag:str):
+    def addPageTag(self, newTags:str):
         #newTag is just the name of the new tag
-        self.tags.append(Tag(newTag))
+        alltags = []
+        alltagColors = []
+        for document in self.app.documents:
+            for tag in document.tags:
+                    alltags.append(tag.name)
+                    alltagColors.append(tag.color)
+        for elem in newTags:
+            if elem.lower() in alltags:
+                colIndex = alltags.index(elem.lower())
+                self.tags.append(Tag(elem.lower(), alltagColors[colIndex]))
+            else:      
+                self.tags.append(Tag(elem.lower()))
+            self.app.editmode.currDoc.updateTags()
 
-    def delPageTag(self, tag:str):
+    def delPageTag(self, tags:str):
         #deletes tag on page by tag name
-        for tag in self.tags:
-            if tag.name == tag:
-                self.tags.remove(tag)
+        for elem in tags:
+            for pagetag in self.tags:
+                if pagetag.name == elem.lower():
+                    self.tags.remove(pagetag)
+            #check if tag is on any other pages in document
+            if len(self.app.editmode.currDoc.pages) > 0:
+                count = 0
+                for page in self.app.editmode.currDoc.pages:
+                    for tag in page.tags:
+                        if elem == tag.name:
+                            count += 1
+                if count < 2:
+                    for tag in self.app.editmode.currDoc.tags:
+                        if elem == tag.name:
+                            self.app.editmode.currDoc.tags.remove(tag)
+                self.app.editmode.currDoc.updateTags()
