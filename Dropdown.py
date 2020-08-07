@@ -61,3 +61,4 @@ class SortDropdown():
             for i in range(len(sorted(self.items))):
                 self.drawItem(canvas, self.items[i], i)
         canvas.create_text(self.cx - self.boxWidth//2 + self.textOffset, self.cy, anchor="w", text=self.menuText, fill="grey")
+

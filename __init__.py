@@ -5,11 +5,11 @@
 from cmu_112_graphics import *
 import tkinter.simpledialog as sd
 import tkinter.messagebox as mb
-#CITATION: pickle from https://docs.python.org/3/library/pickle.html
-import pickle
 #CITATION: tkinter from https://docs.python.org/3/library/tkinter.html
 #import tkinter as tk
 from tkinter import *
+import os.path, time
+from datetime import datetime
 
 from Document import *
 from gui_functions import *
@@ -23,33 +23,7 @@ class WritingApp(ModalApp):
         self.addMode(LibraryMode(name="library"))
         self.addMode(EditorMode(name="editor"))
         self.setActiveMode("library")
-    
-    #TODO: FINISH THIS
-    def getDocs(self): #reads files in the library file directory and converts to Document.
-        if not os.path.exists('documents'):
-            os.makedirs('documents')
-        for filename in os.listdir(): # get the directory
-            if filename.endswith('txt'):
-                f = open("save_dest.txt", "rb")
-                document = pickle.load(f)
-                f.close()
-                """ with open(filename) as csv_file:
-                    csv_reader = csv.reader(csv_file, delimiter=';')
-                        #set title
-                        path = csv_reader[0]
-                        title = csv_reader[1]
-                        tags = []
-                        for tag in csv_reader[2].split(","):
-                            tags.append(tag)
-                        make_timestamp = csv_reader[3]
-                        edit_timestamp = csv_reader[4]
-                        if csv_reader[5] != "":
-                            for content in csv_reader[5].split("\P"): """
-                                #add page object to list of pages
-                        #if marked with pages, page words = the string after pages
-                        #tags represented by {highlighted words here: tag1, tag2, tag3}
 
-                        #add document to list of documents in library.
 
 class EditorMode(Mode):
     def appStarted(self):
@@ -84,8 +58,9 @@ class EditorMode(Mode):
         #######################################################################
         #Cursor vars
         #######################################################################
-        self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
-        self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
+        if len(self.currDoc.pages) > 0:
+            self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
+            self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
 
     def closeEditor(self):
         """Onclick method for when the close button is clicked."""
@@ -189,6 +164,7 @@ class EditorMode(Mode):
         crow = (event.y-self.pageMarginY) // self.letterHeight
         ccol = (event.x-self.pageMarginX) // self.letterWidth
         if 0 <= crow < self.gridRows and 0 <= ccol < self.gridCols:
+            #TODO: Comments to figure out proper cursor maneuvering stuff
             #self.cursorRow = crow
             #self.cursorCol = ccol
             if self.docSearch.isTyping == True:
@@ -248,7 +224,7 @@ class EditorMode(Mode):
                 self.currDoc.pages[currPage].delPageTag(removedTags)
 
     ###############################################
-    #Tag Creation (For later)
+    #Tag Creation (For later...probably after this project is due)
     ###############################################
 
     #Highlight text (mouse pressed and mouse dragged)
@@ -387,14 +363,15 @@ class LibraryMode(Mode):
         self.dividerX = 180
         self.highlightWidth = 14
         self.documents = []
+        self.getDocs()
         tag1 = Tag("short")
         tag2 = Tag("very long tag")
         tag3 = Tag("notes")
         page1 = Page(self, "abcdefg", [tag1, tag2])
         page2 = Page(self, "blahblah")
-        doc1 = Document(self, "filepath1", "15-112: Fundamentals of Computer Science", "1141", [tag3], [page1, page2])
-        doc2 = Document(self, "filepath2", "How People Work", "0127", [tag1, tag2], [page2])
-        doc3 = Document(self, "filepath3", "Another Book", "0242", [tag3], [page2])
+        doc1 = Document(self, "filepath1", "15-112: Fundamentals of Computer Science", "1141", "1111", [tag3], [page1, page2])
+        doc2 = Document(self, "filepath2", "How People Work", "0127", "1231", [tag1, tag2], [page2])
+        doc3 = Document(self, "filepath3", "Another Book", "0242", "1234", [tag3], [page2])
         self.documents.append(doc1)
         self.documents.append(doc2)
         self.documents.append(doc3)
@@ -403,13 +380,63 @@ class LibraryMode(Mode):
             self.selectedDocument = self.documents[0]
         else:
             self.selectedDocument = None
+            print("weird")
         searchBoxWidth = 150
         self.topSearch = SearchBar(self, self.offsetX + searchBoxWidth//2, self.menuHeight - self.offsetY*2, searchBoxWidth)
         self.sortItems = ["Title", "Last edited", "Last created"]
-        #TODO: get the function calls working correctly
         self.dropdown = SortDropdown(self, self.dividerX + searchBoxWidth, self.menuHeight*(1/3), self.sortItems)
         self.showingTags = False
         self.dropdownOpen = False
+
+    ###################################################################
+    #Document Processing 
+    ####################################################################
+        #TODO: FINISH THIS
+    def getDocs(self): #reads files in the library file directory and converts to Document.
+        if not os.path.exists('docfiles'):
+            os.makedirs('docfiles')
+        for filename in os.listdir('docfiles'): # get the directory '.' + 'os.sep' + 
+            if filename.endswith('.txt'):
+                with open('docfiles' + os.sep + filename, "rt") as f:  
+                    contents = f.read()
+                doctags = []
+                words = []
+                pagetags = []
+                convertedTagList = []
+                pages = []
+                for line in contents.split("(/)"):
+                    if line.startswith("Title:"):
+                        title = line[len("Title:"):].strip()
+                    if line.startswith("Doctags:"):
+                        if not line[len("Doctags:"):].isspace():
+                            doctagstr = line[len("Doctags:"):].strip()
+                            for tag in doctagstr.split(","):
+                                doctags.append(Tag(tag.strip()))
+                    if line.startswith("Pages:"):
+                        if not line[len("Pages:"):].isspace():
+                            linestr = line[len("Pages:"):].strip()
+                            for elem in linestr.split("<pwords>"):
+                                words.append(str(elem.strip()))
+                    if line.startswith("Pagetags:"):
+                        linestr = line[len("Pagetags:"):].strip()
+                        for elem in linestr.split("<tname>"):
+                            pagetags.append(elem.strip()) # pagetags is a list with a string of tags
+                makeTime=os.path.getctime
+                editTime=os.path.getmtime
+                for taglist in pagetags:
+                    convertedPageTags = []
+                    for tag in taglist.split(","):
+                        if not tag.isspace():
+                            convertedPageTags.append(Tag(tag.strip()))
+                    convertedTagList.append(convertedPageTags)
+                for i in range(len(words)):
+                    pages.append(Page(self, words[i], convertedTagList[i]))
+                self.documents.append(Document(self, filename, title, f"{makeTime}", f"{editTime}", doctags,
+                    pages))
+
+    ###########################################################################
+    #Other functions begin below
+    ###########################################################################
 
     def mousePressed(self, event):
         """Handles the gui response to mouse presses."""
@@ -480,13 +507,18 @@ class LibraryMode(Mode):
     ###################################################
     #Document Creation/Deletion
     ###################################################
+    def createNewDoc(self):
+        pass #TODO
 
     def newDocPopup(self):
         answer = simpledialog.askstring("Create", "What would you like to name your document?")
         if answer != None:
-            #TODO:create filepath
-            #TODO:get timestamp
-            new = Document(self, "filepath", answer, "0000")
+            filepath = os.path.join("docfiles", f"{answer}.txt",)
+            f = open(filepath, "w")
+            file_str = f"(/)Title: {answer}\n(/)Doctags: \n(/)Pages: \n(/)Pagetags: "
+            f.write(file_str)
+            f.close()
+            new = Document(self, f"{answer}.txt", answer, f"{datetime.datetime.now()}", f"{datetime.datetime.now()}")
             self.documents.append(new)
             #TODO: might be some issue with filters
             self.shownDocs = self.documents
@@ -500,6 +532,10 @@ class LibraryMode(Mode):
             answer = messagebox.askyesno("WARNING", descrip)
             if answer == True:
                 #TODO: deletes the file located at the path of the currently selected document
+                filepath = os.path.join("docfiles", self.selectedDocument.path)
+                print(filepath)
+                if os.path.exists(filepath):
+                    os.remove(filepath)
                 self.documents.remove(self.selectedDocument)
                 if len(self.documents) == 0:
                     self.selectedDocument = None
@@ -610,21 +646,6 @@ class LibraryMode(Mode):
             for elem in answer.split(","):
                 removedTags.append(elem.strip())
             self.selectedDocument.delTag(removedTags)
-
-
-    ############################################
-    #Sort
-    ############################################
-    #from operator import itemgetter, attrgetter
-
-    #sort keys: title, time, tag
-    #mutable/destructive sort which changes the indexes of the items in the list
-        
-    
-
-    #def sortTag (sorts alphabetically by tag)
-
-    #def sortRelevant (option only available when filtering by tag. sorts by occurences of filtered tags)
 
     
     ############################################

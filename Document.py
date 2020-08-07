@@ -7,7 +7,7 @@ from Page import *
 from Tag import *
 
 class Document(): #careful about timestamps, they may need to be strings to preserve zeroes.
-    def __init__(self, app, path, title, make_timestamp, tags=[], pages=[]):
+    def __init__(self, app, path, title, make_timestamp, edit_timestamp, tags=[], pages=[]):
         """Takes in an app, path, title, tags, pages, and timestamp and initializes a document
         object."""
         self.app = app
@@ -23,7 +23,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         #This loads all the tags both internal and external to the document.
         #and sets current page if there are pages
         self.make_timestamp = make_timestamp
-        self.edit_timestamp = None #TODO: write function to update this value
+        self.edit_timestamp = edit_timestamp #TODO: write func to update this val
         self.docWidth = self.app.libraryWidth // 4 - 20
         self.docHeight = self.app.libraryHeight // 4 - 20
         self.thumbnailWidth = 16 #this is the number of characters that can fit on one line
