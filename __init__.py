@@ -10,6 +10,7 @@ import tkinter.messagebox as mb
 from tkinter import *
 import os.path, time
 from datetime import datetime
+import copy
 
 from Document import *
 from gui_functions import *
@@ -39,7 +40,7 @@ class EditorMode(Mode):
         self.pageWidth = 560
         self.pagePosX = int(self.width* (5/11))
         self.pageHeight = 790 - self.menuBotHeight - self.offsetY
-        self.isWriting = True #only set isWriting to false when self.docSearch.isTyping is set to True
+        self.isWriting = True
         self.docSearch = SearchBar(self, self.offsetX + 70, self.menuHeight//2)
         self.timer = 0
         self.errorMessage = None
@@ -64,28 +65,21 @@ class EditorMode(Mode):
 
     def closeEditor(self):
         """Onclick method for when the close button is clicked."""
-        self.currDoc.updateTags() #TODO: this doesnt seem to be update the tags. if pages with tags are deleted
-        #and that tag is not a doctag, then it should remove it from the document.
+        self.currDoc.updateTags()
+        self.currDoc.updatePages()
         self.currDoc.saveFile()
         self.setActiveMode("library")
 
     def modeActivated(self):
+        print("editor mode activated")
         self.appStarted()
     
-    """ def create_widget(self, canvas):
-        
-        text=Text(canvas, height=100, width=100)
-        text.grid() """
-
+    def changeModes(self):  
+        self.setActiveMode("editor" if self.name == "library" else "library")
 
     ###############################################
     #Content management
     ###############################################
-
-    #getCurrentPath (gets path of the edited document)
-
-    #saveFile
-        #(writeFile)
     
     def keyPressed(self, event):
         self.typingSearch(event)
@@ -174,7 +168,7 @@ class EditorMode(Mode):
             #set string line and string index here
     
     def updateCursor(self):
-        if len(self.currDoc.pages) >0:
+        if len(self.currDoc.pages) > 0:
             self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
             self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
 
@@ -366,7 +360,7 @@ class LibraryMode(Mode):
         self.highlightWidth = 14
         self.documents = []
         self.getDocs()
-        tag1 = Tag("short")
+        """ tag1 = Tag("short")
         tag2 = Tag("very long tag")
         tag3 = Tag("notes")
         page1 = Page(self, "abcdefg", [tag1, tag2])
@@ -376,13 +370,12 @@ class LibraryMode(Mode):
         doc3 = Document(self, "filepath3", "Another Book", "0242", "1234", [tag3], [page2])
         self.documents.append(doc1)
         self.documents.append(doc2)
-        self.documents.append(doc3)
+        self.documents.append(doc3) """
         self.shownDocs = self.documents
         if len(self.documents) > 1:
-            self.selectedDocument = self.documents[0]
+            self.selectedDocument = self.shownDocs[0]
         else:
             self.selectedDocument = None
-            print("weird")
         searchBoxWidth = 150
         self.topSearch = SearchBar(self, self.offsetX + searchBoxWidth//2, self.menuHeight - self.offsetY*2, searchBoxWidth)
         self.sortItems = ["Title", "Last edited", "Last created"]
@@ -431,7 +424,6 @@ class LibraryMode(Mode):
                 for taglist in pagetags:
                     convertedPageTags = []
                     for tag in taglist.split(","):
-                        print(tag)
                         if not tag.isspace() and not tag == "":
                             convertedPageTags.append(Tag(tag.strip()))
                     convertedTagList.append(convertedPageTags)
@@ -524,11 +516,11 @@ class LibraryMode(Mode):
             file_str = f"(/)Title: {answer}\n(/)Doctags: \n(/)Pages: \n(/)Pagetags: "
             f.write(file_str)
             f.close()
-            new = Document(self, f"{answer}.txt", answer, f"{datetime.datetime.now()}", f"{datetime.datetime.now()}")
-            self.documents.append(new)
+            newdoc = Document(self, f"{answer}.txt", answer, f"{datetime.datetime.now()}", f"{datetime.datetime.now()}", [], [])
+            self.documents.append(newdoc)
             #TODO: might be some issue with filters
             self.shownDocs = self.documents
-            self.selectedDocument = new
+            self.selectedDocument = newdoc
             self.setActiveMode("editor")
 
     def delDocPopup(self):
@@ -539,7 +531,6 @@ class LibraryMode(Mode):
             if answer == True:
                 #deletes the file located at the path of the currently selected document
                 filepath = os.path.join("docfiles", self.selectedDocument.path)
-                print(filepath)
                 if os.path.exists(filepath):
                     os.remove(filepath)
                 self.documents.remove(self.selectedDocument)
@@ -629,6 +620,9 @@ class LibraryMode(Mode):
         if answer != None:
             newTags = [elem.strip() for elem in answer.split(",")]
             existingTags = [tag.name for tag in self.selectedDocument.tags]
+            for tag in existingTags:
+                if tag in newTags:
+                    newTags.remove(tag)
             if newTags != []:
                 self.selectedDocument.addDocTag(newTags)
 

@@ -36,24 +36,11 @@ class Page():
         """Can find strings in the words on the page"""
         return val in self.words
 
-    def lines(self):
-        """Returns list of words that appear on each line based off of the page width."""
-        pass
 
     def addPageTag(self, newTags:str):
         #newTag is just the name of the new tag
-        alltags = []
-        alltagColors = []
-        for document in self.app.documents:
-            for tag in document.tags:
-                    alltags.append(tag.name)
-                    alltagColors.append(tag.color)
-        for elem in newTags:
-            if elem.lower() in alltags:
-                colIndex = alltags.index(elem.lower())
-                self.tags.append(Tag(elem.lower(), alltagColors[colIndex]))
-            else:      
-                self.tags.append(Tag(elem.lower()))
+        for elem in newTags:     
+            self.tags.append(Tag(elem.lower()))
             self.app.editmode.currDoc.updateTags()
 
     def delPageTag(self, tags:str):

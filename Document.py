@@ -5,6 +5,7 @@ from cmu_112_graphics import *
 from gui_functions import *
 from Page import *
 from Tag import *
+import copy
 
 class Document(): #careful about timestamps, they may need to be strings to preserve zeroes.
     def __init__(self, app, path, title, make_timestamp, edit_timestamp, tags=[], pages=[]):
@@ -15,7 +16,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         self.title = title
         self.pages = pages
         self.doctags = tags
-        self.tags = self.doctags
+        self.tags = []
         self.currPage = None
         self.currPageNum = None
         self.updatePages()
@@ -43,7 +44,11 @@ class Document(): #careful about timestamps, they may need to be strings to pres
     #Magic Methods
     ##############################################################################
     def __repr__(self):
-        return self.title
+        contents = []
+        for page in self.pages:
+            contents.append(page.words)
+        return str(contents)
+            
 
     ############################################################################
     #Editing methods + Pageflipping
@@ -51,19 +56,8 @@ class Document(): #careful about timestamps, they may need to be strings to pres
 
     def addDocTag(self, newTags):
         """Adds tags to the list of tags."""
-        #if tag already exists on another document, use the same color for the tag
-        alltags = []
-        alltagColors = []
-        for document in self.app.documents:
-            for tag in document.tags:
-                    alltags.append(tag.name)
-                    alltagColors.append(tag.color)
-        for elem in newTags:
-            if elem.lower() in alltags:
-                colIndex = alltags.index(elem.lower())
-                self.doctags.append(Tag(elem.lower(), alltagColors[colIndex]))
-            else:      
-                self.doctags.append(Tag(elem.lower()))
+        for elem in newTags:     
+            self.doctags.append(Tag(elem.lower()))
         self.updateTags()
         self.saveFile()
 
@@ -84,13 +78,16 @@ class Document(): #careful about timestamps, they may need to be strings to pres
     def updateTags(self):
         """Method that updates the list of all tags in document. Called when
         doctags or pagetags/internal tags are edited."""
-        self.tags = self.doctags
+        self.tags = []
+        for doctag in self.doctags:
+            self.tags.append(doctag)
         if len(self.pages) > 0:
             for page in self.pages:
                 if len(page.tags) > 0:
                     for tag in page.tags:
                         if tag not in self.doctags:
                             self.tags.append(tag)
+
 
     def updatePages(self):
         if len(self.pages) > 0:
@@ -125,7 +122,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             newPageIndex = self.currPage + 1 #TODO: UPDATE THIS SO CREATING NEW PAGES GOES TO THE NEW PAGE
         else:
             newPageIndex = 0
-        self.pages.insert(newPageIndex, Page(self.app))
+        self.pages.insert(newPageIndex, Page(self.app, "", []))
         #switch pages to the newly created page
         #the page number should always be one greater than the list index
         self.currPage = newPageIndex

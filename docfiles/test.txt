@@ -1,4 +1,4 @@
 (/)Title: test
-(/)Doctags: short,cool
-(/)Pages: some stuff here<pwords>
-(/)Pagetags: <tname>
+(/)Doctags: 
+(/)Pages: Let's add some great content :)<pwords>123
+(/)Pagetags: <tname>iris li
