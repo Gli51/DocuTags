@@ -1,0 +1,4 @@
+(/)Title: 15112 Test Doc
+(/)Doctags: 
+(/)Pages: I can type in this document!<pwords>Word
+(/)Pagetags: <tname>

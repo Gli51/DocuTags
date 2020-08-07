@@ -66,6 +66,7 @@ class EditorMode(Mode):
         """Onclick method for when the close button is clicked."""
         self.currDoc.updateTags() #TODO: this doesnt seem to be update the tags. if pages with tags are deleted
         #and that tag is not a doctag, then it should remove it from the document.
+        self.currDoc.saveFile()
         self.setActiveMode("library")
 
     def modeActivated(self):
@@ -173,8 +174,9 @@ class EditorMode(Mode):
             #set string line and string index here
     
     def updateCursor(self):
-        self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
-        self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
+        if len(self.currDoc.pages) >0:
+            self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
+            self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
 
     ###############################################
     #Popups
@@ -400,37 +402,43 @@ class LibraryMode(Mode):
                 with open('docfiles' + os.sep + filename, "rt") as f:  
                     contents = f.read()
                 doctags = []
-                words = []
+                docContents = []
                 pagetags = []
                 convertedTagList = []
                 pages = []
-                for line in contents.split("(/)"):
-                    if line.startswith("Title:"):
-                        title = line[len("Title:"):].strip()
-                    if line.startswith("Doctags:"):
-                        if not line[len("Doctags:"):].isspace():
-                            doctagstr = line[len("Doctags:"):].strip()
-                            for tag in doctagstr.split(","):
-                                doctags.append(Tag(tag.strip()))
-                    if line.startswith("Pages:"):
-                        if not line[len("Pages:"):].isspace():
-                            linestr = line[len("Pages:"):].strip()
-                            for elem in linestr.split("<pwords>"):
-                                words.append(str(elem.strip()))
-                    if line.startswith("Pagetags:"):
-                        linestr = line[len("Pagetags:"):].strip()
-                        for elem in linestr.split("<tname>"):
-                            pagetags.append(elem.strip()) # pagetags is a list with a string of tags
-                makeTime=os.path.getctime
-                editTime=os.path.getmtime
+                section = contents.split("(/)")[1:]
+                try:
+                    assert(section[0].startswith("Title:"))
+                    assert(section[1].startswith("Doctags:"))
+                    assert(section[2].startswith("Pages:"))
+                    assert(section[3].startswith("Pagetags:"))
+                except AssertionError:
+                    print("Attempted to read invalid document.")
+                    continue
+                title = section[0][len("Title:"):].strip()
+                if not section[1][len("Doctags:"):].isspace():
+                    doctagstr = section[1][len("Doctags:"):].strip()
+                    for tag in doctagstr.split(","):
+                        doctags.append(Tag(tag.strip()))
+                if not section[2][len("Pages:"):].isspace():
+                    pagestr = section[2][len("Pages:"):].strip()
+                    for elem in pagestr.split("<pwords>"):
+                        docContents.append(str(elem.strip()))
+                pagetagstr = section[3][len("Pagetags:"):].strip()
+                for elem in pagetagstr.split("<tname>"):
+                    if not elem.isspace():
+                        pagetags.append(elem.strip()) # pagetags is a list with a string of tags
                 for taglist in pagetags:
                     convertedPageTags = []
                     for tag in taglist.split(","):
-                        if not tag.isspace():
+                        print(tag)
+                        if not tag.isspace() and not tag == "":
                             convertedPageTags.append(Tag(tag.strip()))
                     convertedTagList.append(convertedPageTags)
-                for i in range(len(words)):
-                    pages.append(Page(self, words[i], convertedTagList[i]))
+                makeTime=os.path.getctime
+                editTime=os.path.getmtime
+                for i in range(len(docContents)):
+                    pages.append(Page(self, docContents[i], convertedTagList[i]))
                 self.documents.append(Document(self, filename, title, f"{makeTime}", f"{editTime}", doctags,
                     pages))
 
@@ -494,7 +502,7 @@ class LibraryMode(Mode):
        
 
     def drawHighlight(self, canvas):
-        selectedIndex = self.shownDocs.index(self.selectedDocument) #TODO: currently broken. selectedDocument should always be in shownDocs
+        selectedIndex = self.shownDocs.index(self.selectedDocument)
         row = selectedIndex // self.cols
         col = selectedIndex % self.rows
         cx = col * self.cellWidth + self.cellWidth//2 + (self.width//2-self.displayWidth)
@@ -507,8 +515,6 @@ class LibraryMode(Mode):
     ###################################################
     #Document Creation/Deletion
     ###################################################
-    def createNewDoc(self):
-        pass #TODO
 
     def newDocPopup(self):
         answer = simpledialog.askstring("Create", "What would you like to name your document?")
@@ -531,7 +537,7 @@ class LibraryMode(Mode):
             Deleted documents cannot be recovered."""
             answer = messagebox.askyesno("WARNING", descrip)
             if answer == True:
-                #TODO: deletes the file located at the path of the currently selected document
+                #deletes the file located at the path of the currently selected document
                 filepath = os.path.join("docfiles", self.selectedDocument.path)
                 print(filepath)
                 if os.path.exists(filepath):
@@ -611,7 +617,7 @@ class LibraryMode(Mode):
         answer = simpledialog.askstring("Rename", "What would you like to rename the document?")
         if answer != None:
             self.selectedDocument.rename(answer)
-            #TODO: write new title to file
+            self.selectedDocument.saveFile()
     
 
     def addTagPopup(self):
@@ -621,15 +627,8 @@ class LibraryMode(Mode):
         (Separate tags by commas. Not case sensitive)"""
         answer = simpledialog.askstring("Add doctags", descrip)
         if answer != None:
-            newTags = []
-            existingTags = []
-            for tag in self.selectedDocument.tags:
-                existingTags.append(tag.name)
-            for elem in answer.split(","):
-                if not (elem.lower() in existingTags):
-                    newTags.append(elem.strip())
-                else:
-                    print("Doc already has this tag!") #TODO: maybe display this to user
+            newTags = [elem.strip() for elem in answer.split(",")]
+            existingTags = [tag.name for tag in self.selectedDocument.tags]
             if newTags != []:
                 self.selectedDocument.addDocTag(newTags)
 

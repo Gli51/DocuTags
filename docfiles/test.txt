@@ -1,0 +1,4 @@
+(/)Title: test
+(/)Doctags: short,cool
+(/)Pages: some stuff here<pwords>
+(/)Pagetags: <tname>

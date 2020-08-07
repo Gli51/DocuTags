@@ -23,7 +23,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         #This loads all the tags both internal and external to the document.
         #and sets current page if there are pages
         self.make_timestamp = make_timestamp
-        self.edit_timestamp = edit_timestamp #TODO: write func to update this val
+        self.edit_timestamp = edit_timestamp 
         self.docWidth = self.app.libraryWidth // 4 - 20
         self.docHeight = self.app.libraryHeight // 4 - 20
         self.thumbnailWidth = 16 #this is the number of characters that can fit on one line
@@ -65,7 +65,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             else:      
                 self.doctags.append(Tag(elem.lower()))
         self.updateTags()
-        #TODO: write to file
+        self.saveFile()
 
     def delTag(self, tags):
         """Deletes all instances of that tag from the document, including pages."""
@@ -78,7 +78,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
                     if pagetag.name == elem:
                         page.tags.remove(pagetag)
             self.updateTags()
-            #TODO: write to file
+            self.saveFile()
 
 
     def updateTags(self):
@@ -106,7 +106,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
 
     def rename(self, newName):
         self.title = newName
-        #TODO: write to file
+        self.saveFile()
 
     def deletePage(self):
         """Takes in a pageIndex and removes it from the list of pages."""
@@ -162,10 +162,16 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             return True
         return False
 
-    def saveFile(self): #TODO: Update this to write the timestamp and document contents properly
-        """Writes changes to file I/O. Code taken from https://www.diderot.one/course/34/chapters/2604/"""
-        with open(self.path, "wt") as f:  
-            f.write(self.contents)
+    def saveFile(self): 
+        """Writes changes to file I/O."""
+        pageWords = '<pwords>'.join(page.words for page in self.pages)
+        pageTags = '<tname>'.join((",".join(tag.name for tag in page.tags)) for page in self.pages)
+        filepath = os.path.join("docfiles", self.path)
+        doctagStr = ",".join(tag.name for tag in self.doctags)
+        file_str = (f"(/)Title: {self.title}\n(/)Doctags: {doctagStr}\n(/)Pages: {pageWords}\n(/)Pagetags: {pageTags}")
+        f = open(filepath, "w")
+        f.write(file_str)
+        f.close()
 
     def thumbnailWraparound(self) -> str:
         """Returns a string of words fit to a specified pageWidth where words
