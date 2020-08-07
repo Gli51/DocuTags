@@ -23,7 +23,6 @@ class SortDropdown():
         self.menuText = #some name of the selected item
         self.selecting = False """
 
-    #each of the rectangles might call an onclick? need to select items from dropdown somehow.
     def drawItem(self, canvas, text, i):
         """Draws a cell given cell text, an index, and text color."""
         if text == "Title":
@@ -61,4 +60,3 @@ class SortDropdown():
             for i in range(len(sorted(self.items))):
                 self.drawItem(canvas, self.items[i], i)
         canvas.create_text(self.cx - self.boxWidth//2 + self.textOffset, self.cy, anchor="w", text=self.menuText, fill="grey")
-

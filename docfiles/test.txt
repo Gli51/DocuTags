@@ -1,4 +1,0 @@
-(/)Title: test
-(/)Doctags: 
-(/)Pages: Let's add some great content :)<pwords>123
-(/)Pagetags: <tname>iris li

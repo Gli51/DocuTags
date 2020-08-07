@@ -30,7 +30,6 @@ class EditorMode(Mode):
     def appStarted(self):
         self.libmode = self.getMode("library")
         self.currDoc = self.libmode.selectedDocument
-        print(self.currDoc)
         self.menuHeight = self.height//14
         self.menuBotHeight = self.height//14
         self.offsetX = 14
@@ -119,13 +118,10 @@ class EditorMode(Mode):
                 #same as above excent replace event.key with " "
             if event.key == "Backspace":
                 #TODO: need to consider the lines/rows too
-                if len(self.currDoc.pages[self.currDoc.currPage].words) > 1:
+                if len(self.currDoc.pages[self.currDoc.currPage].words) > 0:
                     if self.currDoc.pages[self.currDoc.currPage].words[self.cursorCol-1] == "\n":
-                        self.cursorRow -= 1
-                        #TODO: bug here because the line doesnt need to be filled. mod doesn't really work
-                        self.cursorCol = (len(self.currDoc.pages[self.currDoc.currPage].words) -
-                            self.currDoc.pages[self.currDoc.currPage].words.count("\n")) % self.gridCols
                         self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
+                        self.updateCursor()
                     else:
                         self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
                         self.cursorCol -= 1
@@ -150,10 +146,14 @@ class EditorMode(Mode):
     def overflow(self):
         #Ignores newlines when counting characters for overflow
         newlineCount = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
-        if (len(self.currDoc.pages[self.currDoc.currPage].words) - newlineCount) % 66 == 0:
+        contents = self.currDoc.pages[self.currDoc.currPage].words
+        if newlineCount > 0:
+            lineLength = len(contents[self.findNewLine(contents, self.cursorRow):]) - self.cursorRow
+        else:
+            lineLength = len(contents)
+        if lineLength % 66 == 0:
             self.currDoc.pages[self.currDoc.currPage].words += "\n"
-            self.cursorRow += 1
-            self.cursorCol = 0
+            self.updateCursor()
 
     def mousePressed(self, event):
         crow = (event.y-self.pageMarginY) // self.letterHeight
@@ -169,8 +169,17 @@ class EditorMode(Mode):
     
     def updateCursor(self):
         if len(self.currDoc.pages) > 0:
-            self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
-            self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
+            contents = self.currDoc.pages[self.currDoc.currPage].words
+            self.cursorRow = contents.count("\n")
+            lineIndex = len(contents[self.findNewLine(contents, self.cursorRow):]) - self.cursorRow
+            self.cursorCol = lineIndex
+            
+    
+    def findNewLine(self, string, n): # CITATION NEEDED
+        parts = string.split("\n", n + 1)
+        if len(parts) <= n + 1:
+            return -1
+        return len(string) - len(parts[-1]) - len("\n")
 
     ###############################################
     #Popups
@@ -181,7 +190,7 @@ class EditorMode(Mode):
         answer = simpledialog.askstring("Jump to", descrip)
         if answer != None and answer.isdigit():
             if self.currDoc.jumpToPage(answer) == False:
-                print("Page not in range")
+                self.searchError = True
     
     def deletePopup(self):
         if self.currDoc.currPage != None:
@@ -236,7 +245,7 @@ class EditorMode(Mode):
     def searchDocument(self):
         pageNum = []
         for i in range(len(self.currDoc.pages)):
-            if self.docSearch.searchInput in self.currDoc.pages[i].words:
+            if self.docSearch.searchInput.lower() in self.currDoc.pages[i].words.lower():
                 pageNum.append(i)
         if len(pageNum) > 0:
             self.currDoc.currPage = pageNum[0]
@@ -252,7 +261,7 @@ class EditorMode(Mode):
         frequency = 3000
         self.timer += self.timerDelay
         if self.searchError == True and self.errorMessage == None:
-            self.errorMessage = "Search input cannot be found in this document."
+            self.errorMessage = "Search input not found."
         if self.timer % frequency == 0:
             self.searchError = False
             self.errorMessage = None
@@ -285,7 +294,7 @@ class EditorMode(Mode):
         drawButton(canvas, self.width - tagButtonWidth - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.delPageTagPopup,text="Delete page tag", w=tagButtonWidth)
         drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.closeEditor, text="Close", w=buttonWidth)
         if self.errorMessage != None:
-            canvas.create_text(self.width//2, self.menuHeight*(3/2), text= f"{self.errorMessage}", fill="Indian red")
+            canvas.create_text(self.width//2 - buttonWidth*2, self.menuHeight//2, text= f"{self.errorMessage}", fill="Indian red")
 
     def drawBotMenu(self, canvas):
         buttonWidth = 80
@@ -378,6 +387,7 @@ class LibraryMode(Mode):
             self.selectedDocument = None
         searchBoxWidth = 150
         self.topSearch = SearchBar(self, self.offsetX + searchBoxWidth//2, self.menuHeight - self.offsetY*2, searchBoxWidth)
+        self.filterSearch = FilterSearch(self, self.dividerX + searchBoxWidth, self.menuHeight*(2/3) + self.offsetY//2)
         self.sortItems = ["Title", "Last edited", "Last created"]
         self.dropdown = SortDropdown(self, self.dividerX + searchBoxWidth, self.menuHeight*(1/3), self.sortItems)
         self.showingTags = False
@@ -464,6 +474,10 @@ class LibraryMode(Mode):
             if not ((self.topSearch.cx - self.topSearch.boxWidth//2) <= event.x <= (self.topSearch.cx + self.topSearch.boxWidth//2) and
                 (self.topSearch.cy - self.topSearch.boxHeight//2) <= event.y <= (self.topSearch.cy + self.topSearch.boxHeight//2)):
                 self.topSearch.isTyping = False
+        if self.filterSearch.isTyping == True:
+            if not ((self.filterSearch.cx - self.filterSearch.boxWidth//2) <= event.x <= (self.filterSearch.cx + self.topSearch.boxWidth//2) and
+                (self.filterSearch.cy - self.filterSearch.boxHeight//2) <= event.y <= (self.filterSearch.cy + self.filterSearch.boxHeight//2)):
+                self.filterSearch.isTyping = False
     
     def keyPressed(self, event):
         if self.topSearch.isTyping == True:
@@ -479,6 +493,19 @@ class LibraryMode(Mode):
                 self.topSearch.searchInput = self.topSearch.searchInput[:-1]
             if event.key == "Enter":
                 self.searchMatch()
+        elif self.filterSearch.isTyping == True:
+            alphabet= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            numbers = "0123456789"
+            symbols = "!@#$%^&*()'.,<>/?\|]}[{+_-=;:"
+            if (event.key in alphabet or event.key in numbers or event.key in symbols
+                or event.key == '"'):
+                self.filterSearch.searchInput += event.key
+            if event.key == "Space":
+                self.filterSearch.searchInput += " "
+            if event.key == "Backspace":
+                self.filterSearch.searchInput = self.filterSearch.searchInput[:-1]
+            if event.key == "Enter":
+                self.filterMatch()
     
     def searchMatch(self):
         matchedDocs = []
@@ -553,11 +580,10 @@ class LibraryMode(Mode):
         self.topSearch.drawBox(canvas)
         canvas.create_line(self.dividerX, self.offsetY, self.dividerX, self.menuHeight - self.offsetY, width=2, fill="light grey")
         canvas.create_text(self.dividerX + self.offsetX, self.offsetY, anchor = "nw", font=f"Arial {self.titleSize} normal", text="Sort by:")
+        canvas.create_text(self.dividerX + self.offsetX, self.menuHeight - self.offsetY, anchor = "sw", font=f"Arial {self.titleSize} normal", text="Filter tag:")
+        self.filterSearch.drawBox(canvas)
         #sort dropdown
         self.dropdown.drawDDMenu(canvas)
-        #filter text
-        canvas.create_text(self.dividerX + self.offsetX, self.menuHeight - self.offsetY, anchor = "sw", font=f"Arial {self.titleSize} normal", text="Filter tag:")
-        #TODO: filter display (max 4)
         #new doc button
         drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.newDocPopup, text="New Doc", w=buttonWidth)
 
@@ -645,9 +671,22 @@ class LibraryMode(Mode):
     #Filter
     ############################################
 
-    #filterDoc
-        #takes in a list of currently selected filter tags
-        #doesn't render ones that don't have that tag
+    def filterMatch(self):
+        matchedDocs = []
+        for doc in self.documents:
+            print(doc.tags)
+            print(self.filterSearch.searchInput)
+            for elem in doc.tags:
+                if (self.filterSearch.searchInput.lower() in elem and
+                    doc not in matchedDocs):
+                    matchedDocs.append(doc)
+        # TODO: sth weird with this. list index out of range
+        self.shownDocs = matchedDocs
+        if matchedDocs != []:
+            self.selectedDocument = self.shownDocs[0]
+        else:
+            self.selectedDocument = None
+
 
     #addFilterTag
 

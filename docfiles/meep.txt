@@ -1,4 +1,0 @@
-(/)Title: meep
-(/)Doctags: 
-(/)Pages: Hello world!<pwords>Hi! What's up
-(/)Pagetags: short<tname>

@@ -20,6 +20,10 @@ class Tag():
     def __repr__(self):
         return self.name
 
+    def __contains__(self, other):
+        if isinstance(other, str):
+            return other in self.name
+
     def changeColor(self, newColor: str):
         """Changes color to a hexcode of newColor."""
         self.color = newColor
