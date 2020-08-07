@@ -114,6 +114,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             self.pages.pop(self.currPage)
         elif self.currPage == 0 and len(self.pages) > 0:
             self.pages.pop(self.currPage)
+            self.app.editmode.updateCursor()
             if len(self.pages) < 1:
                 self.currPage = None
                 self.currPageNum = None
@@ -129,7 +130,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         #the page number should always be one greater than the list index
         self.currPage = newPageIndex
         self.currPageNum = self.currPage + 1
-        self.app.editmode.cursorCol, self.app.editmode.cursorRow = 0, 0 
+        self.app.editmode.updateCursor()
 
     def flipForward(self):
         """flips to the next page if it is not the last page. returns true if successful"""
@@ -137,6 +138,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             #flip page forward
             self.currPage += 1
             self.currPageNum += 1
+            self.app.editmode.updateCursor()
             return True
         else: return False
 
@@ -146,6 +148,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
             #flip page backward
             self.currPage -= 1
             self.currPageNum -= 1
+            self.app.editmode.updateCursor()
             return True
         else: return False
 
@@ -155,6 +158,7 @@ class Document(): #careful about timestamps, they may need to be strings to pres
         if 0 <= pageIndex < len(self.pages):
             self.currPage = pageIndex
             self.currPageNum = self.currPage + 1
+            self.app.editmode.updateCursor()
             return True
         return False
 

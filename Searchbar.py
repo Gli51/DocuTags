@@ -18,6 +18,8 @@ class SearchBar(object):
     def onClick(self):
         if self.isTyping == False:
             self.isTyping = True
+        if self.app.name == "editor":
+            self.app.isWriting = False
 
 
     def drawBox(self, canvas):
@@ -25,7 +27,7 @@ class SearchBar(object):
             self.cx + self.boxWidth//2, self.cy + self.boxHeight//2, fill="white", outline="light grey", 
             width=2, onClick=self.onClick)
         if self.isTyping == False and self.searchInput == "":
-            canvas.create_text(self.textOffsetX, self.cy, anchor="w", fill= "light grey", font=("Courier New", 9), text= "Search titles...")
+            canvas.create_text(self.textOffsetX, self.cy, anchor="w", fill= "light grey", font=("Courier New", 9), text= "Search...")
         else: 
             #shows the first 15 characters of your search
             canvas.create_text(self.textOffsetX, self.cy, anchor="w", fill= "grey", font=("Courier New", 9), text= f"{self.searchInput}"[:20])

@@ -65,8 +65,11 @@ class EditorMode(Mode):
         self.pageWidth = 560
         self.pagePosX = int(self.width* (5/11))
         self.pageHeight = 790 - self.menuBotHeight - self.offsetY
-        self.isWriting = True #only set isWriting to false when isSearching is set to True
-        self.isSearching = False
+        self.isWriting = True #only set isWriting to false when self.docSearch.isTyping is set to True
+        self.docSearch = SearchBar(self, self.offsetX + 70, self.menuHeight//2)
+        self.timer = 0
+        self.errorMessage = None
+        self.searchError = False
 
         #######################################################################
         #Grid Variables
@@ -81,9 +84,8 @@ class EditorMode(Mode):
         #######################################################################
         #Cursor vars
         #######################################################################
-        self.cursorRow = 0
-        self.cursorCol = 0
-
+        self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
+        self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
 
     def closeEditor(self):
         """Onclick method for when the close button is clicked."""
@@ -110,51 +112,71 @@ class EditorMode(Mode):
         #(writeFile)
     
     def keyPressed(self, event):
+        self.typingSearch(event)
+        self.typingWords(event)
+
+    def typingSearch(self, event):
+        if self.docSearch.isTyping == True:
             alphabet= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
             numbers = "0123456789"
             symbols = "!@#$%^&*()'.,<>/?\|]}[{+_-=;:"
             if (event.key in alphabet or event.key in numbers or event.key in symbols
                 or event.key == '"'):
-                if self.isWriting == True and len(self.currDoc.pages) > 0:
-                    self.currDoc.pages[self.currDoc.currPage].words += event.key
-                    self.cursorCol += 1
-                    self.overflow()
+                self.docSearch.searchInput += event.key
+            if event.key == "Space":
+                self.docSearch.searchInput += " "
+            if event.key == "Backspace":
+                if len(self.docSearch.searchInput) > 0:
+                    self.docSearch.searchInput = self.docSearch.searchInput[:-1]
+            if event.key == "Enter":
+                    self.searchDocument()
+
+    def typingWords(self, event):
+        if self.isWriting == True and len(self.currDoc.pages) > 0:
+            alphabet= "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            numbers = "0123456789"
+            symbols = "!@#$%^&*()'.,<>/?\|]}[{+_-=;:"
+            if (event.key in alphabet or event.key in numbers or event.key in symbols
+                or event.key == '"'):
+                self.currDoc.pages[self.currDoc.currPage].words += event.key
+                self.cursorCol += 1
+                self.overflow()
                 #set page contents equal to page contents[:i] + event.key + pagecontents[i:]
             if event.key == "Space":
-                if self.isWriting == True and len(self.currDoc.pages) > 0:
-                    self.currDoc.pages[self.currDoc.currPage].words += " "
-                    self.cursorCol += 1
-                    self.overflow()
+                self.currDoc.pages[self.currDoc.currPage].words += " "
+                self.cursorCol += 1
+                self.overflow()
                 #same as above excent replace event.key with " "
             if event.key == "Backspace":
-                if self.isWriting == True and len(self.currDoc.pages) > 0:
-                    #TODO: need to consider the lines/rows too
+                #TODO: need to consider the lines/rows too
+                if len(self.currDoc.pages[self.currDoc.currPage].words) > 1:
                     if self.currDoc.pages[self.currDoc.currPage].words[self.cursorCol-1] == "\n":
                         self.cursorRow -= 1
-                        #set cursor col to the end of that line
+                        #TODO: bug here because the line doesnt need to be filled. mod doesn't really work
+                        self.cursorCol = (len(self.currDoc.pages[self.currDoc.currPage].words) -
+                            self.currDoc.pages[self.currDoc.currPage].words.count("\n")) % self.gridCols
                         self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
                     else:
                         self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
                         self.cursorCol -= 1
             if event.key == "Enter":
-                if self.isWriting == True and len(self.currDoc.pages) > 0:
-                    self.currDoc.pages[self.currDoc.currPage].words += "\n"
-                    self.cursorRow += 1
-                    self.cursorCol = 0
+                self.currDoc.pages[self.currDoc.currPage].words += "\n"
+                self.cursorRow += 1
+                self.cursorCol = 0
                 #add a newline at cursor index
             if event.key == "Tab":
-                if self.isWriting == True and len(self.currDoc.pages) > 0:
-                    #adds tab expanded to spaces
-                    for i in range(4): #Goes to new line if the tab would go off the canvas
-                        if (len(self.currDoc.pages[self.currDoc.currPage].words) + i) % 66 == 0:
-                            self.currDoc.pages[self.currDoc.currPage].words += "\n"
-                            self.cursorRow += 1
-                            self.cursorCol = 0
-                            return
-                    self.currDoc.pages[self.currDoc.currPage].words += (" "*4)
-                    self.cursorCol += 4
-                    self.overflow()
-    #TODO: shouldn't count new lines as characters
+                #adds tab expanded to spaces
+                for i in range(4): #Goes to new line if the tab would go off the canvas
+                    if (len(self.currDoc.pages[self.currDoc.currPage].words) + i) % 66 == 0:
+                        self.currDoc.pages[self.currDoc.currPage].words += "\n"
+                        self.cursorRow += 1
+                        self.cursorCol = 0
+                        return
+                self.currDoc.pages[self.currDoc.currPage].words += (" "*4)
+                self.cursorCol += 4
+                self.overflow()
+
+
     def overflow(self):
         #Ignores newlines when counting characters for overflow
         newlineCount = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
@@ -167,9 +189,16 @@ class EditorMode(Mode):
         crow = (event.y-self.pageMarginY) // self.letterHeight
         ccol = (event.x-self.pageMarginX) // self.letterWidth
         if 0 <= crow < self.gridRows and 0 <= ccol < self.gridCols:
-            self.cursorRow = crow
-            self.cursorCol = ccol
+            #self.cursorRow = crow
+            #self.cursorCol = ccol
+            if self.docSearch.isTyping == True:
+                self.docSearch.isTyping = False
+                self.isWriting = True
             #set string line and string index here
+    
+    def updateCursor(self):
+        self.cursorRow = self.currDoc.pages[self.currDoc.currPage].words.count("\n")
+        self.cursorCol = len(self.currDoc.pages[self.currDoc.currPage].words) % self.gridCols
 
     ###############################################
     #Popups
@@ -189,6 +218,7 @@ class EditorMode(Mode):
             answer = messagebox.askyesno("WARNING", descrip)
             if answer != False:
                 self.currDoc.deletePage()
+                self.updateCursor()
 
     def addPageTagPopup(self):
         """Onclick method that opens popup when adding page tag"""
@@ -218,7 +248,7 @@ class EditorMode(Mode):
                 self.currDoc.pages[currPage].delPageTag(removedTags)
 
     ###############################################
-    #Tag Creation
+    #Tag Creation (For later)
     ###############################################
 
     #Highlight text (mouse pressed and mouse dragged)
@@ -231,14 +261,30 @@ class EditorMode(Mode):
     #Content searching stuff
     ###############################################
 
-    #searchDocument
-        #get user input
-        #look for matching string
-        #jump to first instance
+    def searchDocument(self):
+        pageNum = []
+        for i in range(len(self.currDoc.pages)):
+            if self.docSearch.searchInput in self.currDoc.pages[i].words:
+                pageNum.append(i)
+        if len(pageNum) > 0:
+            self.currDoc.currPage = pageNum[0]
+        else:
+            self.searchError = True
 
-    #nextMatch
+    #def nextMatch(self):
+        #pass
 
     #lastMatch
+
+    def timerFired(self):
+        frequency = 3000
+        self.timer += self.timerDelay
+        if self.searchError == True and self.errorMessage == None:
+            self.errorMessage = "Search input cannot be found in this document."
+        if self.timer % frequency == 0:
+            self.searchError = False
+            self.errorMessage = None
+                
 
     ###############################################
     #Tag searching stuff
@@ -262,9 +308,12 @@ class EditorMode(Mode):
         tagButtonWidth = 100
 
         canvas.create_rectangle(0, 0, self.width, self.menuHeight, fill= "white", width=0)
+        self.docSearch.drawBox(canvas)
         drawButton(canvas, self.width - tagButtonWidth*2 - (buttonWidth//2 + self.offsetX*2), self.menuHeight//2, onClick=self.addPageTagPopup,text="Add page tag", w=tagButtonWidth)
         drawButton(canvas, self.width - tagButtonWidth - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.delPageTagPopup,text="Delete page tag", w=tagButtonWidth)
         drawButton(canvas, self.width - (buttonWidth//2 + self.offsetX), self.menuHeight//2, onClick=self.closeEditor, text="Close", w=buttonWidth)
+        if self.errorMessage != None:
+            canvas.create_text(self.width//2, self.menuHeight*(3/2), text= f"{self.errorMessage}", fill="Indian red")
 
     def drawBotMenu(self, canvas):
         buttonWidth = 80
