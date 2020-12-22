@@ -44,6 +44,7 @@ class EditorMode(Mode):
         self.timer = 0
         self.errorMessage = None
         self.searchError = False
+        self.updateCursor()
 
         #######################################################################
         #Grid Variables
@@ -120,7 +121,9 @@ class EditorMode(Mode):
                 #TODO: need to consider the lines/rows too
                 if len(self.currDoc.pages[self.currDoc.currPage].words) > 0:
                     if self.currDoc.pages[self.currDoc.currPage].words[self.cursorCol-1] == "\n":
+                        print("here")
                         self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
+                        self.cursorRow -= 1
                         self.updateCursor()
                     else:
                         self.currDoc.pages[self.currDoc.currPage].words = self.currDoc.pages[self.currDoc.currPage].words[:-1]
@@ -174,8 +177,8 @@ class EditorMode(Mode):
             lineIndex = len(contents[self.findNewLine(contents, self.cursorRow):]) - self.cursorRow
             self.cursorCol = lineIndex
             
-    
-    def findNewLine(self, string, n): # CITATION NEEDED
+    #CITATION: adapted from https://www.tutorialspoint.com/How-to-find-the-nth-occurrence-of-substring-in-a-string-in-Python
+    def findNewLine(self, string, n):
         parts = string.split("\n", n + 1)
         if len(parts) <= n + 1:
             return -1

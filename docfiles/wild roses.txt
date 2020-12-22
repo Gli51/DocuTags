@@ -3,4 +3,5 @@
 (/)Pages: wild roses
 tarrying beside one
 touched by time
-(/)Pagetags: 
+<pwords>
+(/)Pagetags: tag<tname>
